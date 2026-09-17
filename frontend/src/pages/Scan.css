@@ -2,6 +2,7 @@
   min-height: 100svh;
   background: #0b0d12;
   color: #eee;
+  color-scheme: dark;
 }
 
 .scan-page .stage {
