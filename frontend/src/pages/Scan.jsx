@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSocket } from '../hooks/useSocket'
 import { httpUrl } from '../config'
-import { fieldRows, fieldsLine } from '../lib/productFields'
+import ResultPanel from '../components/ResultPanel'
 import './Scan.css'
 
 export default function Scan() {
@@ -20,8 +20,8 @@ export default function Scan() {
   const [count, setCount] = useState('no barcode')
   const [phase, setPhase] = useState('idle') // idle | predicting | live | error: ...
   const [hint, setHint] = useState(null)
-  const [hintEmpty, setHintEmpty] = useState(false)
-  const [fields, setFields] = useState(null)
+  const [noProduct, setNoProduct] = useState(false)
+  const [result, setResult] = useState(null)
 
   // A photo picked with the upload button, analyzed as a one-off request —
   // separate from the live request/response pump below, so it doesn't
@@ -44,11 +44,21 @@ export default function Scan() {
     canvas.height = h
     canvas.getContext('2d').drawImage(video, 0, 0, w, h)
 
-    const ok = sendRef.current(canvas.toDataURL('image/jpeg', 0.5))
-    if (ok) {
-      inflightRef.current = true
-      setPhase('predicting')
-    }
+    // Raw JPEG bytes over a binary WS frame, not a base64 data URL — base64
+    // costs ~33% extra payload plus an encode/decode on every single frame
+    // of a live stream, which is pure added latency for no benefit here.
+    canvas.toBlob((blob) => {
+      if (!blob) { setTimeout(() => pumpRef.current(), 100); return }
+      blob.arrayBuffer().then((buf) => {
+        const ok = sendRef.current(buf)
+        if (ok) {
+          inflightRef.current = true
+          setPhase('predicting')
+        } else {
+          setTimeout(() => pumpRef.current(), 150)
+        }
+      })
+    }, 'image/jpeg', 0.6)
   }, [])
 
   useEffect(() => { pumpRef.current = pump }, [pump])
@@ -65,9 +75,14 @@ export default function Scan() {
       ? boxesRef.current.length + ' code' + (boxesRef.current.length !== 1 ? 's' : '')
       : 'no barcode')
     setPhase(r.error ? 'error: ' + r.error : 'live')
-    setHint(r.hint || null)
-    setHintEmpty(r.product_detected === false)
-    setFields(fieldsLine(r))
+    // hint_kind === 'no_product' covers "nothing recognisable at all" even
+    // when the (optional, model-file-dependent) YOLO gate isn't running;
+    // product_detected === false is the gate's own, earlier verdict when it
+    // is. Either one means the same thing to the person holding the phone.
+    const isNoProduct = r.product_detected === false || r.hint_kind === 'no_product'
+    setHint(isNoProduct ? null : r.hint || null)
+    setNoProduct(isNoProduct)
+    setResult(r)
 
     pump()
   }, [pump])
@@ -172,9 +187,9 @@ export default function Scan() {
     setUpload({ status: 'loading', previewUrl: URL.createObjectURL(file), result: null, error: null })
 
     const form = new FormData()
-    form.append('image', file)
+    form.append('file', file)
 
-    fetch(httpUrl('/upload'), { method: 'POST', body: form })
+    fetch(httpUrl('/api/analyze'), { method: 'POST', body: form })
       .then((res) => {
         if (!res.ok) throw new Error(`server returned ${res.status}`)
         return res.json()
@@ -187,23 +202,42 @@ export default function Scan() {
     ? (status === 'connecting' ? 'connecting…' : 'reconnecting…')
     : (phase === 'idle' ? 'live' : phase === 'predicting' ? 'predicting…' : phase === 'live' ? 'live' : phase)
 
-  const uploadRows = upload?.result ? fieldRows(upload.result) : []
-  const uploadCodes = upload?.result?.codes || []
+  const isLive = status === 'open'
 
   return (
     <div className="scan-page">
+      <header className="app-header">
+        <div className="brand">
+          <span className="brand-dot" />
+          Smart Pick <span className="brand-sub">scanner</span>
+        </div>
+        <span className={`live-pill${isLive ? ' on' : ''}`}>
+          <span className="live-dot" />{statusText}
+        </span>
+      </header>
+
       <div className="stage">
         <video ref={videoRef} autoPlay playsInline muted />
         <canvas ref={overlayRef} className="overlay" />
-        {hint && <div className={`hint${hintEmpty ? ' empty' : ''}`}>{hint}</div>}
-        {fields && <div className="fields">{fields}</div>}
+
+        {noProduct && (
+          <div className="no-product-overlay">
+            <div className="no-product-badge">
+              <span className="no-product-icon">🔍</span>
+              NO PRODUCT DETECTED
+              <span className="no-product-sub">point the camera at a product label</span>
+            </div>
+          </div>
+        )}
+
+        {!noProduct && hint && <div className="hint">{hint}</div>}
       </div>
+
       <div className="bar">
         <span className="count">{count}</span>
         <span className="lat">{latency}</span>
-        <span className="status">{statusText}</span>
         <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>
-          upload photo
+          ⬆ upload photo
         </button>
       </div>
       <input
@@ -216,37 +250,22 @@ export default function Scan() {
       />
       {cameraError && <div className="err">{cameraError}</div>}
 
+      <div className="live-result">
+        <div className="section-label">live result</div>
+        <ResultPanel result={result} placeholder="point the camera at a product to see results here" />
+      </div>
+
       {upload && (
         <div className="upload-panel">
           <div className="upload-panel-head">
             <img src={upload.previewUrl} alt="Uploaded product" />
             <button className="close-btn" onClick={() => setUpload(null)}>×</button>
           </div>
-          {upload.status === 'loading' && <p className="state">analyzing…</p>}
-          {upload.status === 'error' && <p className="state error">Couldn't analyze that photo: {upload.error}</p>}
-          {upload.status === 'done' && (
-            <div className="upload-result">
-              {uploadCodes.length > 0 && (
-                <div className="codes">
-                  {uploadCodes.map((c, i) => (
-                    <span key={i} className="code-chip">{c.kind} · {c.value}</span>
-                  ))}
-                </div>
-              )}
-              {uploadRows.length > 0 ? (
-                <div className="fields-list">
-                  {uploadRows.map(([key, label, value]) => (
-                    <div className="field-row" key={key}>
-                      <span className="k">{label}</span>
-                      <span className="v">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="state">no label info found in that photo</p>
-              )}
-            </div>
-          )}
+          <div className="upload-panel-body">
+            {upload.status === 'loading' && <p className="state">analyzing…</p>}
+            {upload.status === 'error' && <p className="state error">Couldn't analyze that photo: {upload.error}</p>}
+            {upload.status === 'done' && <ResultPanel result={upload.result} />}
+          </div>
         </div>
       )}
     </div>

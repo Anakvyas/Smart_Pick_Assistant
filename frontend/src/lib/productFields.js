@@ -1,7 +1,11 @@
-export const FIELD_KEYS = ['name', 'expiry', 'gstin', 'weight', 'mrp', 'company', 'address', 'batch']
+export const FIELD_KEYS = [
+  'name', 'mfg_date', 'expiry', 'weight', 'mrp',
+  'company', 'address', 'gstin', 'batch', 'barcode',
+]
 
 export const FIELD_LABELS = {
   name: 'name',
+  mfg_date: 'mfg. date',
   expiry: 'expiry',
   weight: 'weight',
   mrp: 'MRP',
@@ -9,6 +13,7 @@ export const FIELD_LABELS = {
   company: 'company',
   address: 'address',
   batch: 'batch',
+  barcode: 'barcode no.',
 }
 
 export function fieldRows(r) {
@@ -18,6 +23,7 @@ export function fieldRows(r) {
 export function fieldsLine(r) {
   const parts = []
   if (r.name) parts.push(r.name)
+  if (r.mfg_date) parts.push('mfg ' + r.mfg_date)
   if (r.expiry) parts.push('exp ' + r.expiry)
   if (r.weight) parts.push(r.weight)
   if (r.mrp) parts.push(r.mrp)
