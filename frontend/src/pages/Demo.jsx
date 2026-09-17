@@ -40,22 +40,47 @@ export default function Demo() {
         public database tracks those per barcode.
       </p>
 
-      {state.status === 'loading' && <p className="state">loading demo products…</p>}
-      {state.status === 'error' && <p className="state error">Couldn't load demo products: {state.error}</p>}
+      {state.status === 'loading' && (
+        <div className="demo-grid">
+          {[0, 1, 2].map((i) => (
+            <div className="demo-card demo-card-skeleton" key={i}>
+              <div className="skeleton demo-card-skeleton-img" />
+              <div className="demo-card-skeleton-body">
+                <div className="skeleton" style={{ width: '60%', height: 14 }} />
+                <div className="skeleton" style={{ width: '85%', height: 12 }} />
+                <div className="skeleton" style={{ width: '70%', height: 12 }} />
+                <div className="skeleton" style={{ width: '50%', height: 12 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {state.status === 'error' && (
+        <p className="state error">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" />
+          </svg>
+          Couldn't load demo products: {state.error}
+        </p>
+      )}
+
       {state.status === 'done' && state.products.length === 0 && (
         <p className="state">
           No demo products yet — run <code>backend/demo/gen_demo.py</code> to generate them.
         </p>
       )}
 
-      <div className="demo-grid">
-        {state.products.map((p) => (
-          <div className="demo-card" key={p.id}>
-            <img src={httpUrl(p.image)} alt={p.name || p.id} />
-            <ResultPanel result={p} />
-          </div>
-        ))}
-      </div>
+      {state.status === 'done' && state.products.length > 0 && (
+        <div className="demo-grid">
+          {state.products.map((p) => (
+            <div className="demo-card" key={p.id}>
+              <img src={httpUrl(p.image)} alt={p.name || p.id} />
+              <ResultPanel result={p} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,0 +1,372 @@
+.scan-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 20, 0.6);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  z-index: 100;
+  animation: fade-in var(--fast) ease both;
+}
+
+.scan-dialog {
+  width: min(100%, 420px);
+  max-height: min(92svh, 820px);
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  animation: fade-slide-up var(--base) var(--ease) both;
+}
+
+.scan-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  background: linear-gradient(155deg, var(--brand-700) 0%, var(--brand-900) 100%);
+  color: #fff;
+}
+
+.scan-dialog-target {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.scan-dialog-target-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.scan-dialog-target-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-dialog-target-sub {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+}
+
+.scan-dialog-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--fast) ease;
+}
+
+.scan-dialog-close:hover { background: rgba(255, 255, 255, 0.24); }
+
+.scan-dialog-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.scan-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: #0b0d12;
+  line-height: 0;
+  overflow: hidden;
+}
+
+.scan-stage video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.scan-dialog .viewfinder {
+  position: absolute;
+  inset: 14% 12%;
+  pointer-events: none;
+  animation: fade-in var(--slow) ease both;
+}
+
+.scan-dialog .vf-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+}
+
+.scan-dialog .vf-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: var(--r-md); }
+.scan-dialog .vf-corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: var(--r-md); }
+.scan-dialog .vf-corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: var(--r-md); }
+.scan-dialog .vf-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: var(--r-md); }
+
+.scan-hint {
+  position: absolute;
+  top: var(--sp-3);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 28px);
+  padding: 8px 16px;
+  background: rgba(30, 22, 4, 0.85);
+  border: 1px solid rgba(217, 143, 10, 0.55);
+  color: #ffd88a;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: fade-slide-up var(--base) var(--ease) both;
+  backdrop-filter: blur(6px);
+}
+
+.scan-dialog .no-product-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 6, 6, 0.4);
+  pointer-events: none;
+  padding: var(--sp-4);
+}
+
+.scan-dialog .no-product-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(40, 12, 12, 0.9);
+  border: 1.5px solid rgba(224, 54, 46, 0.55);
+  color: #ff8f89;
+  padding: 18px 26px;
+  border-radius: var(--r-xl);
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+  backdrop-filter: blur(6px);
+  animation: fade-in var(--base) ease both;
+}
+
+.scan-dialog .no-product-sub {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffb3ae;
+  letter-spacing: normal;
+}
+
+.verifying-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(9, 12, 10, 0.45);
+}
+
+.verifying-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(11, 43, 27, 0.92);
+  border: 1.5px solid rgba(15, 157, 99, 0.55);
+  color: #b7f3d4;
+  padding: 12px 20px;
+  border-radius: var(--r-pill);
+  font-size: 14px;
+  font-weight: 800;
+  backdrop-filter: blur(6px);
+  animation: fade-in var(--fast) ease both;
+}
+
+.camera-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 6, 0.7);
+  padding: var(--sp-5);
+}
+
+.camera-error-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  color: #ffb3ae;
+  max-width: 280px;
+}
+
+.camera-error-card p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #ffd7d4;
+}
+
+.scan-dialog-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--sp-3) var(--sp-4);
+}
+
+.scan-dialog .live-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--neutral-bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background var(--fast) ease, color var(--fast) ease, border-color var(--fast) ease;
+}
+
+.scan-dialog .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
+.scan-dialog .live-pill.on { background: var(--success-bg); color: var(--success-strong); border-color: var(--success-border); }
+.scan-dialog .live-pill.on .live-dot { background: var(--success); box-shadow: 0 0 0 3px rgba(15, 157, 99, 0.18); }
+
+.scan-latency {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------ outcome screens */
+.scan-outcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--sp-8) var(--sp-5) var(--sp-6);
+  gap: 6px;
+  animation: fade-slide-up var(--base) var(--ease) both;
+}
+
+.outcome-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  animation: outcome-pop var(--slow) var(--ease) both;
+}
+
+.outcome-icon.success { background: var(--success-bg); color: var(--success-strong); box-shadow: 0 0 0 8px var(--success-bg); }
+.outcome-icon.danger { background: var(--danger-bg); color: var(--danger-strong); box-shadow: 0 0 0 8px var(--danger-bg); }
+
+@keyframes outcome-pop {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.scan-outcome h2 {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.scan-outcome.verified h2 { color: var(--success-strong); }
+.scan-outcome.not-verified h2 { color: var(--danger-strong); }
+
+.outcome-sub {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.outcome-card {
+  width: 100%;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  margin: var(--sp-2) 0 var(--sp-4);
+  text-align: left;
+}
+
+.outcome-card-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  word-break: break-word;
+}
+
+.outcome-card-sub {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.outcome-tips {
+  width: 100%;
+  text-align: left;
+  margin: 4px 0 var(--sp-4);
+  padding-left: 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.outcome-error {
+  color: var(--danger-strong);
+  font-size: 13px;
+  margin: 0 0 var(--sp-2);
+}
+
+.outcome-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.outcome-actions .btn { flex: 1; }
+
+.spinner.brand {
+  border-color: var(--brand-100);
+  border-left-color: var(--brand-500);
+}
+
+@media (min-width: 520px) {
+  .scan-dialog-backdrop { padding: var(--sp-6); }
+}

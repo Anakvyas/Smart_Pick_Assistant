@@ -1,5 +1,6 @@
-/node_modules
-/dist
-/env
-/logs
+.venv/
+__pycache__/
+*.pyc
 .env
+./demo
+/demo

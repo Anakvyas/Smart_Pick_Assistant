@@ -1,0 +1,199 @@
+import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { ordersApi } from '../api/ordersApi';
+import ScanDialog from '../components/ScanDialog';
+
+function getInitials(name) {
+  if (!name) return 'P';
+  const parts = name.trim().split(/\s+/);
+  const initials = parts.slice(0, 2).map((part) => part[0]?.toUpperCase());
+  return initials.join('') || 'P';
+}
+
+const STATUS_META = {
+  ASSIGNED: { label: 'Assigned', variant: 'neutral' },
+  IN_PROGRESS: { label: 'In progress', variant: 'warning' },
+  COMPLETED: { label: 'Completed', variant: 'success' },
+};
+
+function formatTime(iso) {
+  try {
+    return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  } catch {
+    return iso;
+  }
+}
+
+function OrderCard({ order, onScan }) {
+  const meta = STATUS_META[order.status] || { label: order.status, variant: 'neutral' };
+  const pct = order.unit_count > 0 ? Math.round((order.picked_count / order.unit_count) * 100) : 0;
+
+  return (
+    <div className="order-card">
+      <div className="order-card-head">
+        <span className={`status-pill ${meta.variant}`}>
+          <span className="dot" />
+          {meta.label}
+        </span>
+      </div>
+      <div className="order-body">
+        <h3>{order.order_number}</h3>
+        <p className="order-meta-line">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 3" />
+          </svg>
+          Assigned: {formatTime(order.assigned_at)}
+        </p>
+        <p className="order-meta-line">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 7l9-4 9 4-9 4-9-4Z" />
+            <path d="M3 7v10l9 4 9-4V7" />
+          </svg>
+          {order.product_count} products · {order.unit_count} units
+        </p>
+
+        <div className="order-progress-row">
+          <div className="order-progress-track">
+            <div className="order-progress-fill" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="order-progress-label">{order.picked_count} of {order.unit_count} picked</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="secondary-button"
+        disabled={order.status === 'COMPLETED'}
+        onClick={() => onScan(order)}
+      >
+        {order.status === 'COMPLETED' ? 'View details' : 'Scan to pick'}
+      </button>
+    </div>
+  );
+}
+
+function OrderSkeleton() {
+  return (
+    <div className="order-skeleton">
+      <div className="skeleton" />
+      <div className="skeleton" />
+      <div className="skeleton" />
+    </div>
+  );
+}
+
+function DashboardPage() {
+  const { user, logout } = useAuth();
+  const [state, setState] = useState({ status: 'loading', orders: [], error: null });
+  const [scanningOrder, setScanningOrder] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    ordersApi.mine()
+      .then((res) => {
+        if (!active) return;
+        setState({ status: 'done', orders: res.data.orders, error: null });
+      })
+      .catch((err) => {
+        if (!active) return;
+        setState({ status: 'error', orders: [], error: err?.payload?.error?.message || 'Could not load your orders.' });
+      });
+    return () => { active = false };
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/login';
+  };
+
+  // Optimistic only — there's no backend endpoint yet to persist a pick, so
+  // this just reflects the successful scan in the current session's list.
+  const handleVerified = (order) => {
+    setState((s) => ({
+      ...s,
+      orders: s.orders.map((o) => o.id === order.id
+        ? { ...o, picked_count: Math.min(o.picked_count + 1, o.unit_count) }
+        : o),
+    }));
+  };
+
+  const activeCount = state.orders.filter((o) => o.status !== 'COMPLETED').length;
+
+  return (
+    <main className="dashboard-shell">
+      <header className="dashboard-header">
+        <div className="brand-lockup">
+          <div className="brand-lockup-mark" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 7 12 3l9 4-9 4-9-4Z" />
+              <path d="M3 7v10l9 4 9-4V7" />
+              <path d="M12 11v10" />
+            </svg>
+          </div>
+          <p className="eyebrow">Smart Picker</p>
+        </div>
+        <button type="button" className="logout-button" onClick={handleLogout}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <path d="M16 17l5-5-5-5M21 12H9" />
+          </svg>
+          Logout
+        </button>
+      </header>
+
+      <section className="dashboard-content">
+        <div className="welcome-row">
+          <div className="welcome-avatar" aria-hidden="true">{getInitials(user?.name)}</div>
+          <div>
+            <h1>Welcome, {user?.name?.split(' ')[0] || 'Picker'}</h1>
+            <p className="role-tag">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 12l5 5L20 6" />
+              </svg>
+              {user?.role || 'PICKER'}
+            </p>
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel-header">
+            <h2>Assigned Orders</h2>
+            {state.status === 'done' && (
+              <span className="panel-count">{activeCount} active</span>
+            )}
+          </div>
+
+          {state.status === 'loading' && (
+            <>
+              <OrderSkeleton />
+              <div style={{ height: 12 }} />
+              <OrderSkeleton />
+            </>
+          )}
+
+          {state.status === 'error' && (
+            <p className="empty-state" style={{ color: 'var(--danger-strong)' }}>{state.error}</p>
+          )}
+
+          {state.status === 'done' && state.orders.length === 0 && (
+            <p className="empty-state">No orders assigned yet — check back soon.</p>
+          )}
+
+          {state.status === 'done' && state.orders.map((order) => (
+            <OrderCard key={order.id} order={order} onScan={setScanningOrder} />
+          ))}
+        </div>
+      </section>
+
+      {scanningOrder && (
+        <ScanDialog
+          order={scanningOrder}
+          onClose={() => setScanningOrder(null)}
+          onVerified={handleVerified}
+        />
+      )}
+    </main>
+  );
+}
+
+export default DashboardPage;

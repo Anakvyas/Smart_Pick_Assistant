@@ -25,6 +25,16 @@ export default function ResultPanel({ result, placeholder }) {
 
   return (
     <div className="result-panel">
+      <div className="result-status-row">
+        <span className={`status-pill ${result.valid ? 'success' : 'danger'}`}>
+          <span className="dot" />
+          {result.valid ? 'Product recognised' : 'Not recognised'}
+        </span>
+        {result.latency_ms != null && (
+          <span className="result-latency">{result.latency_ms} ms</span>
+        )}
+      </div>
+
       {codes.length > 0 && (
         <div className="result-codes">
           {codes.map((c, i) => (

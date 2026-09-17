@@ -1,34 +1,284 @@
+/* ============================================================
+   Design system — one shared light theme for the whole app
+   (scanner pages + auth pages), replacing the old dark-scanner /
+   light-auth split. Every page pulls from these tokens rather than
+   defining its own palette, so the whole product reads as one
+   considered system instead of several screens bolted together.
+   ============================================================ */
 :root {
-  --bg: #0b0d12;
-  --panel: #161922;
-  --panel-2: #1c202c;
-  --border: #262c3a;
-  --text: #eef0f4;
-  --muted: #8b93a5;
-  --accent-green: #25d366;
-  --accent-blue: #5b9bff;
-  --accent-amber: #ffb648;
-  --accent-red: #ff5c5c;
-  --radius: 12px;
-  --radius-lg: 16px;
+  /* ---- typography ---- */
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Manrope', 'Inter', -apple-system, sans-serif;
+
+  /* ---- brand ---- */
+  --brand-900: #101b3f;
+  --brand-700: #1c2d6b;
+  --brand-600: #253a8a;
+  --brand-500: #3450b8;   /* primary interactive */
+  --brand-400: #5470d6;
+  --brand-100: #e7ecfb;
+  --brand-50:  #f3f6fd;
+
+  /* ---- semantic status ---- */
+  --success: #0f9d63;
+  --success-strong: #0b7a4d;
+  --success-bg: #e9f9f1;
+  --success-border: #b9ecd3;
+
+  --danger: #e0362e;
+  --danger-strong: #b8241d;
+  --danger-bg: #fdedec;
+  --danger-border: #f6c7c4;
+
+  --warning: #b9760a;
+  --warning-strong: #8f5b07;
+  --warning-bg: #fef6e7;
+  --warning-border: #f3dda3;
+
+  --neutral: #6b7280;
+  --neutral-bg: #f1f2f5;
+  --neutral-border: #e2e4e9;
+
+  /* ---- surfaces & text ---- */
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-alt: #fafbfd;
+  --text: #12162b;
+  --text-muted: #5b6172;
+  --text-faint: #9297a6;
+  --border: #e6e8ef;
+  --border-strong: #d6d9e3;
+
+  /* ---- elevation ---- */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 60, 0.04);
+  --shadow-sm: 0 2px 8px rgba(16, 24, 60, 0.06);
+  --shadow-md: 0 8px 24px rgba(16, 24, 60, 0.08);
+  --shadow-lg: 0 16px 40px rgba(16, 24, 60, 0.12);
+  --shadow-focus: 0 0 0 4px rgba(52, 80, 184, 0.16);
+
+  /* ---- radius ---- */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  /* ---- spacing scale ---- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* ---- motion ---- */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --fast: 140ms;
+  --base: 220ms;
+  --slow: 380ms;
+
+  color-scheme: light;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, 'Inter', system-ui, sans-serif;
-  color-scheme: dark;
+  font-family: var(--font-body);
   background: var(--bg);
   color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 #root {
   min-height: 100svh;
 }
 
-button {
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--text);
+}
+
+button, input, select, textarea {
   font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--brand-500);
+}
+
+::selection {
+  background: var(--brand-100);
+  color: var(--brand-900);
+}
+
+button:focus-visible,
+input:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--r-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   Shared primitives — status pills, buttons, cards, skeletons —
+   used across every page so these read identically everywhere
+   instead of being redefined per component.
+   ============================================================ */
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.status-pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.status-pill.success { background: var(--success-bg); color: var(--success-strong); }
+.status-pill.danger  { background: var(--danger-bg);  color: var(--danger-strong); }
+.status-pill.warning { background: var(--warning-bg); color: var(--warning-strong); }
+.status-pill.neutral { background: var(--neutral-bg); color: var(--text-muted); }
+.status-pill.brand   { background: var(--brand-100);  color: var(--brand-700); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 18px;
+  min-height: 42px;
+  transition: transform var(--fast) var(--ease), box-shadow var(--fast) var(--ease),
+              background var(--fast) var(--ease), opacity var(--fast) var(--ease);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: linear-gradient(155deg, var(--brand-500), var(--brand-700));
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(52, 80, 184, 0.28);
+}
+
+.btn-primary:hover { box-shadow: 0 10px 26px rgba(52, 80, 184, 0.36); }
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+
+.btn-secondary:hover { background: var(--surface-alt); border-color: var(--brand-400); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover { background: var(--neutral-bg); color: var(--text); }
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Shimmer skeleton — used for any "we don't have the real content yet"
+   placeholder (demo gallery loading, orders loading, etc). A flat gray
+   block reads as broken; a moving shimmer reads as "loading". */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--neutral-bg);
+  border-radius: var(--r-md);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 1.6s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.4);
+  border-left-color: #fff;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
 }
