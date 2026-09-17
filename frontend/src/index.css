@@ -23,6 +23,7 @@ body {
   color-scheme: dark;
   background: var(--bg);
   color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
 #root {

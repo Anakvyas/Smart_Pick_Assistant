@@ -1,19 +1,28 @@
 {
-  "name": "backend",
+  "name": "smart-picker-backend",
   "version": "1.0.0",
-  "description": "\"this is backend of project\"",
-  "license": "ISC",
-  "author": "",
-  "type": "commonjs",
-  "main": "index.js",
+  "private": true,
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test"
   },
   "dependencies": {
-    "express": "^5.2.1",
-    "node": "^26.9.0"
+    "bcryptjs": "^3.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.1.0",
+    "express-validator": "^7.0.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "pg": "^8.18.0",
+    "pg-mem": "^3.0.0"
   },
-  "allowScripts": {
-    "node@26.9.0": true
+  "devDependencies": {
+    "nodemon": "^3.1.7",
+    "supertest": "^7.0.0"
   }
 }

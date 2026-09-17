@@ -3,6 +3,9 @@
   background: var(--bg);
   color: var(--text);
   padding-bottom: 24px;
+  background: #0b0d12;
+  color: #eee;
+  color-scheme: dark;
 }
 
 .app-header {
