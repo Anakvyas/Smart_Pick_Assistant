@@ -4,6 +4,7 @@
   color: var(--text);
   display: flex;
   min-height: 100svh;
+  color-scheme: dark;
 }
 
 .display-page .left {
