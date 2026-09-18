@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { isLocalOrigin, PUBLIC_URL_OVERRIDE } from '../config'
 import { ordersApi } from '../api/ordersApi'
+import { analyzePhoto } from '../api/scanApi'
 import { useSocket } from '../hooks/useSocket'
 import { countResolved, firstPending } from '../lib/orderItems'
 import QrCode from './QrCode'
@@ -29,8 +30,10 @@ function deriveOrderFromItems(order, items) {
  * The PC/desktop side of picking an order: a "window" onto the phone doing
  * the actual scanning (see ScanDialog, the phone-only camera scanner this
  * QR code opens at /pick/:orderId) — this component never requests camera
- * access itself. It just shows the QR code and polls the order's items so
- * the checklist updates live as the phone verifies them.
+ * access itself. Shows the QR code, updates the checklist live (pushed over
+ * an order-scoped websocket as the phone verifies items, with a poll as a
+ * backstop), and lets a picker without a phone upload a photo directly from
+ * this computer instead.
  */
 export default function OrderWatchDialog({ order, onClose, onOrderUpdated, onShowScanner }) {
   const [items, setItems] = useState([])
@@ -44,16 +47,18 @@ export default function OrderWatchDialog({ order, onClose, onOrderUpdated, onSho
   const [scanToken, setScanToken] = useState(null)
   const cancelledRef = useRef(false)
   const statusRef = useRef('loading')
-  // Live debug feed: /ws/scan (the phone's connection) broadcasts every
-  // frame's full result to any connected /ws/display socket — the exact
-  // same channel the original Display page uses. Subscribing to it here
-  // too means whoever's watching this order on a PC can see precisely
-  // what the phone's camera is reading in real time (OCR fields, barcode,
-  // hints) without needing to look at the phone's own screen at all. Not
-  // scoped to this order specifically (the channel is global, same as
-  // Display.jsx) — fine for its purpose here, which is debugging what a
-  // scan produced, not a security boundary.
+  // Live debug feed: /ws/scan/{order.id} (the phone's connection, see
+  // ScanDialog) broadcasts every frame's full result to this order's
+  // /ws/display/{order.id} subscribers — scoped per-order (routes/scan.py's
+  // broadcast()) so two pickers working two different orders never see
+  // each other's live scan traffic here.
   const [lastScanFrame, setLastScanFrame] = useState(null)
+  const fileInputRef = useRef(null)
+  // A photo picked from this PC's filesystem/gallery, held for review
+  // before it's sent — same pattern as ScanDialog's capture/gallery review
+  // step. { blob, previewUrl }
+  const [capturedPhoto, setCapturedPhoto] = useState(null)
+  const [upload, setUpload] = useState({ status: 'idle', error: null, outcome: null })
 
   const poll = useCallback(() => {
     if (statusRef.current === 'complete') return
@@ -115,9 +120,93 @@ export default function OrderWatchDialog({ order, onClose, onOrderUpdated, onSho
     }
   }, [poll])
 
-  useSocket('/ws/display', useCallback((data) => {
-    try { setLastScanFrame(JSON.parse(data)) } catch { /* ignore a malformed frame */ }
-  }, []))
+  // item_update (pushed by routes/orders.py right after a verify/unavailable
+  // call succeeds, from a phone OR this PC's own upload below) updates the
+  // checklist instantly instead of waiting on the poll; anything else is a
+  // raw scan-frame result for the debug panel, same as before.
+  const onSocketMessage = useCallback((data) => {
+    let msg
+    try { msg = JSON.parse(data) } catch { return }
+    if (msg.type === 'item_update') {
+      if (msg.item) {
+        setItems((prev) => {
+          const next = prev.map((i) => (i.id === msg.item.id ? msg.item : i))
+          const nextStatus = firstPending(next) ? 'watching' : 'complete'
+          statusRef.current = nextStatus
+          setStatus(nextStatus)
+          return next
+        })
+      }
+      if (msg.order) onOrderUpdated?.(msg.order)
+      return
+    }
+    setLastScanFrame(msg)
+  }, [onOrderUpdated])
+
+  useSocket(`/ws/display/${order.id}`, onSocketMessage)
+
+  const onFilePicked = useCallback((e) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow picking the same file again later
+    if (!file) return
+    setCapturedPhoto((prev) => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl)
+      return { blob: file, previewUrl: URL.createObjectURL(file) }
+    })
+    setUpload({ status: 'idle', error: null, outcome: null })
+  }, [])
+
+  const retakePhoto = useCallback(() => {
+    setCapturedPhoto((prev) => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl)
+      return null
+    })
+    setUpload({ status: 'idle', error: null, outcome: null })
+  }, [])
+
+  // Releases a picked photo's blob URL if the dialog closes while it's
+  // still under review — every other path that replaces/clears
+  // capturedPhoto already revokes the outgoing URL itself (onFilePicked,
+  // retakePhoto), this only covers unmount. Same pattern as ScanDialog.
+  const capturedPhotoRef = useRef(null)
+  useEffect(() => { capturedPhotoRef.current = capturedPhoto }, [capturedPhoto])
+  useEffect(() => () => {
+    if (capturedPhotoRef.current?.previewUrl) URL.revokeObjectURL(capturedPhotoRef.current.previewUrl)
+  }, [])
+
+  // Sends the reviewed photo through the same /api/analyze -> verify path a
+  // phone's capture/gallery pick goes through (see ScanDialog.analyzeCaptured)
+  // — lets a picker at this PC without a phone still check a product against
+  // the order by uploading a photo of it.
+  const analyzeAndVerify = useCallback(() => {
+    if (!capturedPhoto) return
+    setUpload({ status: 'loading', error: null, outcome: null })
+    analyzePhoto(capturedPhoto.blob)
+      .then((r) => {
+        if (!r.valid || (!r.barcode && !r.name)) {
+          setUpload({
+            status: 'idle', error: null,
+            outcome: { matched: false, reason: "That photo didn't have a clear enough barcode or label to check." },
+          })
+          return null
+        }
+        return ordersApi.verify(order.id, { barcode: r.barcode || null, name: r.name || null })
+      })
+      .then((res) => {
+        if (!res) return
+        const data = res.data
+        onOrderUpdated?.(data.order)
+        if (data.matched) {
+          setItems((prev) => prev.map((i) => (i.id === data.item.id ? data.item : i)))
+          const nextStatus = data.order.status === 'COMPLETED' ? 'complete' : 'watching'
+          statusRef.current = nextStatus
+          setStatus(nextStatus)
+        }
+        setUpload({ status: 'idle', error: null, outcome: data })
+        if (data.matched) retakePhoto()
+      })
+      .catch((err) => setUpload({ status: 'error', error: err.message, outcome: null }))
+  }, [capturedPhoto, order.id, onOrderUpdated, retakePhoto])
 
   const pickUrl = scanToken
     ? `${PUBLIC_URL_OVERRIDE || window.location.origin}/pick/${order.id}?token=${encodeURIComponent(scanToken)}`
@@ -214,7 +303,56 @@ export default function OrderWatchDialog({ order, onClose, onOrderUpdated, onSho
                   ngrok and set <code>VITE_PUBLIC_URL</code>, then reopen this order.
                 </p>
               )}
+
+              {!capturedPhoto && (
+                <button
+                  type="button"
+                  className="watch-upload-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M12 19V5M5 12l7-7 7 7" />
+                  </svg>
+                  Upload a photo from this computer
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={onFilePicked}
+                hidden
+              />
             </div>
+
+            {/* Review step for a PC-picked photo, not sent yet — mirrors
+                ScanDialog's capture/gallery review so a bad shot can be
+                retaken before spending a round trip on it. Lets a picker at
+                this PC without a phone still check a product against the
+                order. */}
+            {capturedPhoto && (
+              <div className="watch-upload-review">
+                <img src={capturedPhoto.previewUrl} alt="Photo to check against this order" className="watch-upload-review-img" />
+                <div className="watch-upload-review-actions">
+                  <button type="button" className="btn btn-secondary" onClick={retakePhoto} disabled={upload.status === 'loading'}>
+                    Retake
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={analyzeAndVerify} disabled={upload.status === 'loading'}>
+                    {upload.status === 'loading' && <span className="spinner" aria-hidden="true" />}
+                    {upload.status === 'loading' ? 'Checking…' : 'Analyze & verify'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {upload.status === 'error' && (
+              <p className="watch-upload-error">Couldn't analyze that photo: {upload.error}</p>
+            )}
+            {upload.outcome?.matched === false && (
+              <p className="watch-upload-error">
+                {upload.outcome.reason || "That photo didn't match anything still pending on this order."}
+              </p>
+            )}
 
             <div className="watch-items-list">
               {items.length === 0 && status === 'loading' && (

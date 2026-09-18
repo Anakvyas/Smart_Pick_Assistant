@@ -54,26 +54,41 @@ DUMMY_ORDERS = [
     dict(
         order=dict(order_number="ORD-1001", status="IN_PROGRESS", product_count=3, unit_count=4, picked_count=1),
         items=[
-            _line("parle-g", qty=2, verified=1),
-            _line("maggi-noodles", qty=1),
-            _line("amul-taaza-milk", qty=1),
+            _line("instant-noodles", qty=2, verified=1),
+            _line("amul-milk-500ml", qty=1),
+            _line("lays-classic", qty=1),
         ],
     ),
     dict(
         order=dict(order_number="ORD-1002", status="ASSIGNED", product_count=5, unit_count=8, picked_count=0),
         items=[
-            _line("lays-magic-masala", qty=2),
-            _line("britannia-good-day", qty=2),
-            _line("kurkure-masala-munch", qty=2),
-            _line("tata-salt", qty=1),
-            _line("maggi-noodles", qty=1),
+            _line("happilo-snack", qty=2),
+            _line("face-tissues", qty=2),
+            _line("hand-sanitizer", qty=2),
+            _line("exercise-book", qty=1),
+            _line("amul-milk-500ml", qty=1),
         ],
     ),
     dict(
         order=dict(order_number="ORD-1003", status="COMPLETED", product_count=2, unit_count=2, picked_count=2),
         items=[
-            _line("parle-g", qty=1, verified=1),
-            _line("tata-salt", qty=1, verified=1),
+            _line("instant-noodles", qty=1, verified=1),
+            _line("exercise-book", qty=1, verified=1),
+        ],
+    ),
+    # A "one of everything" cart, all still PENDING — for testing scan/QR/
+    # upload verification against every real product in the catalog in one
+    # order, rather than hunting across ORD-1001/1002 for an unpicked one.
+    dict(
+        order=dict(order_number="ORD-1004", status="ASSIGNED", product_count=7, unit_count=7, picked_count=0),
+        items=[
+            _line("instant-noodles", qty=1),
+            _line("amul-milk-500ml", qty=1),
+            _line("happilo-snack", qty=1),
+            _line("lays-classic", qty=1),
+            _line("face-tissues", qty=1),
+            _line("hand-sanitizer", qty=1),
+            _line("exercise-book", qty=1),
         ],
     ),
 ]

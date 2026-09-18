@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSocket } from '../hooks/useSocket'
-import { httpUrl } from '../config'
 import { ordersApi } from '../api/ordersApi'
+import { analyzePhoto } from '../api/scanApi'
 import { isTrustworthyRead, mergeFrame, normalizeName } from '../lib/scanAggregation'
 import { countResolved, firstPending, isPending } from '../lib/orderItems'
 import ResultPanel from './ResultPanel'
@@ -23,25 +23,33 @@ const NOT_VERIFIED_TIMEOUT_MS = 25000
 const stillScanning = (s) => s === 'starting' || s === 'scanning' || s === 'checking'
 const showsCamera = (s) => s === 'loading' || stillScanning(s)
 
+function nameMatches(item, rawName) {
+  const a = normalizeName(rawName)
+  if (!a) return false
+  const b = normalizeName(item.name)
+  return !!b && (a.includes(b) || b.includes(a))
+}
+
 // Mirrors the backend's own matching order (controllers/order_controller.py,
-// _find_match): exact barcode first, then a fuzzy either-way name match.
-// `pendingOnly` narrows the pool to items not yet resolved (VERIFIED or
-// UNAVAILABLE both excluded).
+// _find_match) exactly, including the part that's easy to miss: a barcode
+// match alone is never trusted by itself — a misread, a swapped/adjacent
+// label, or a relabeled item can all still produce a "correct" barcode read
+// on the wrong physical product. The same scan's name has to corroborate
+// that *same* item before it counts as a match; a bare barcode with no name
+// (or a name pointing somewhere else) is treated as no match at all, not
+// silently trusted on the barcode. Only when no barcode was read does a
+// name-only match count on its own. `pendingOnly` narrows the pool to items
+// not yet resolved (VERIFIED or UNAVAILABLE both excluded).
 function findMatchForScan(items, scan, pendingOnly) {
   const pool = pendingOnly ? items.filter(isPending) : items
   if (scan.barcode) {
-    const exact = pool.find((i) => i.barcode && i.barcode === scan.barcode)
-    if (exact) return exact
+    const barcodeHit = pool.find((i) => i.barcode && i.barcode === scan.barcode)
+    if (barcodeHit) {
+      return scan.name && nameMatches(barcodeHit, scan.name) ? barcodeHit : null
+    }
   }
   if (scan.name) {
-    const a = normalizeName(scan.name)
-    if (a) {
-      const byName = pool.find((i) => {
-        const b = normalizeName(i.name)
-        return b && (a.includes(b) || b.includes(a))
-      })
-      if (byName) return byName
-    }
+    return pool.find((i) => nameMatches(i, scan.name)) || null
   }
   return null
 }
@@ -216,7 +224,13 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
       // Non-blocking: shown as a banner over the still-live camera, not a
       // takeover screen, so scanning keeps running the whole time and the
       // picker can retry, keep scanning, or fall back to a photo upload.
-      setMismatch({ detected: scanned })
+      // A barcode with no name yet is the specific "not enough to confirm"
+      // case findMatchForScan rejects (see its own comment) — called out
+      // by name here rather than lumped in with a genuine wrong-item read.
+      const reason = scanned.barcode && !scanned.name
+        ? "Barcode read, but there's no label/name yet to confirm it — hold steady so the label gets read too."
+        : null
+      setMismatch({ detected: scanned, reason })
       return
     }
 
@@ -229,7 +243,7 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
           // The order changed under us between the client-side pre-check
           // and this call (e.g. another device just finished the same
           // item) — rare, but handled the same as a genuine mismatch.
-          setMismatch({ detected: scanned })
+          setMismatch({ detected: scanned, reason: data.reason })
           goTo('scanning')
           return
         }
@@ -291,7 +305,13 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
     pump()
   }, [pump, goTo, verifyCurrent, scheduleNotVerifiedTimeout])
 
-  const { status, send } = useSocket('/ws/scan', onMessage)
+  // Order-scoped path — matched by routes/orders.py pushing item_update
+  // events on the same order id via /ws/display/{order_id}, and by
+  // routes/scan.py's broadcast() mirroring order-scoped scan frames only to
+  // that order's /ws/display subscribers (see OrderWatchDialog). Keeps two
+  // pickers working two different orders from ever seeing each other's
+  // live scan traffic.
+  const { status, send } = useSocket(`/ws/scan/${order.id}`, onMessage)
   useEffect(() => { sendRef.current = send }, [send])
   useEffect(() => {
     if (status === 'open') pump()
@@ -370,8 +390,24 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
       }
     }
     start()
+
+    // Watchdog: getUserMedia can resolve (permission granted, stream
+    // returned) and yet never actually produce a frame — a stuck autoplay
+    // policy, a driver quirk, a track that stays "live" but frozen. That
+    // leaves videoWidth at 0 forever with no error ever thrown, so nothing
+    // above would ever set cameraError — the picker would just see a blank
+    // stage with no "Try again" button and no way out short of reloading
+    // the whole page. This turns silent hangs into the same recoverable
+    // error state a thrown getUserMedia error already gets.
+    const watchdog = setTimeout(() => {
+      if (!cancelled && !videoRef.current?.videoWidth) {
+        setCameraError("Camera didn't start. Tap Try again — if that doesn't help, check that no other app or tab is using the camera.")
+      }
+    }, 8000)
+
     return () => {
       cancelled = true
+      clearTimeout(watchdog)
       stream?.getTracks().forEach((t) => t.stop())
     }
   }, [cameraKey])
@@ -552,13 +588,7 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
   const analyzeCaptured = useCallback(() => {
     if (!capturedPhoto) return
     setUpload({ status: 'loading', error: null })
-    const form = new FormData()
-    form.append('file', capturedPhoto.blob, 'pick.jpg')
-    fetch(httpUrl('/api/analyze'), { method: 'POST', body: form })
-      .then((res) => {
-        if (!res.ok) throw new Error(`server returned ${res.status}`)
-        return res.json()
-      })
+    analyzePhoto(capturedPhoto.blob)
       .then((r) => {
         setLastRawFrame(r)
         if (r.valid && isTrustworthyRead(r)) {
@@ -715,6 +745,7 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
                       </span>
                     </div>
                   </div>
+                  {mismatch.reason && <p className="mismatch-reason">{mismatch.reason}</p>}
                   <div className="mismatch-actions">
                     <button type="button" className="btn btn-secondary btn-sm" onClick={rescan}>Rescan</button>
                     <button type="button" className="btn btn-primary btn-sm" onClick={capturePhoto}>
@@ -785,7 +816,13 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
+              // Deliberately no `capture` attribute — the "Capture" button
+              // above already takes a fresh photo straight from the live
+              // video. On many mobile browsers (iOS Safari especially),
+              // `capture` on the file input skips the native
+              // camera/photo-library/files chooser and launches the camera
+              // app directly, which silently defeats this "Gallery" button
+              // (there's no way to actually pick an existing photo).
               onChange={onFilePicked}
               hidden
             />

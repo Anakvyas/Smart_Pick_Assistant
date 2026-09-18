@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { ordersApi } from '../api/ordersApi';
 import ScanDialog from '../components/ScanDialog';
 import OrderWatchDialog from '../components/OrderWatchDialog';
+import BackgroundDecor from '../components/BackgroundDecor';
 
 function getInitials(name) {
   if (!name) return 'P';
@@ -136,6 +137,7 @@ function DashboardPage() {
 
   return (
     <main className="dashboard-shell">
+      <BackgroundDecor />
       <header className="dashboard-header">
         <div className="brand-lockup">
           <div className="brand-lockup-mark" aria-hidden="true">

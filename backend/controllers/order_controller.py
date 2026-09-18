@@ -91,7 +91,12 @@ def _name_matches(item: OrderItem, name: str | None) -> bool:
     return bool(a) and bool(b) and (a in b or b in a)
 
 
-def _find_match(items: list[OrderItem], req: ScanVerifyRequest) -> OrderItem | None:
+def _find_match(items: list[OrderItem], req: ScanVerifyRequest) -> tuple[OrderItem | None, str | None]:
+    """Returns (matched_item_or_None, rejection_reason_or_None) — a reason
+    is only ever set alongside None, so callers can tell "no match at all"
+    apart from "matched the barcode but couldn't confirm it" without
+    re-deriving the same checks.
+    """
     # Only items still PENDING are eligible — a scan can never re-match an
     # item that's already VERIFIED or marked UNAVAILABLE. A *rejected* scan
     # (no match found here) is deliberately not persisted as any kind of
@@ -99,12 +104,31 @@ def _find_match(items: list[OrderItem], req: ScanVerifyRequest) -> OrderItem | N
     # PENDING and immediately eligible for another attempt.
     pending = [i for i in items if i.status == "PENDING"]
     if req.barcode:
-        exact = next((i for i in pending if i.barcode and i.barcode == req.barcode), None)
-        if exact:
-            return exact
+        barcode_hit = next((i for i in pending if i.barcode and i.barcode == req.barcode), None)
+        if barcode_hit:
+            # A barcode match alone is not trusted as proof of the correct
+            # product — a misread, a swapped/adjacent label, or a
+            # relabeled item can all still produce a "correct" barcode read
+            # on the wrong physical item. The scan's own label/name has to
+            # corroborate that *same* item before it counts as verified;
+            # a bare barcode with no name (or a name that points somewhere
+            # else) is rejected rather than trusted on the barcode alone.
+            if req.name and _name_matches(barcode_hit, req.name):
+                return barcode_hit, None
+            if req.name:
+                return None, (
+                    f"Barcode matched {barcode_hit.name!r}, but the label read {req.name!r} — "
+                    "that doesn't look like the same product."
+                )
+            return None, (
+                "Barcode matched, but there's no label/name yet to confirm it's the right "
+                "product — rescan with the name or label visible, not just the barcode."
+            )
     if req.name:
-        return next((i for i in pending if _name_matches(i, req.name)), None)
-    return None
+        by_name = next((i for i in pending if _name_matches(i, req.name)), None)
+        if by_name:
+            return by_name, None
+    return None, "That scan doesn't match any item still pending on this order."
 
 
 def _apply_order_completion(order, items: list[OrderItem]) -> None:
@@ -129,7 +153,7 @@ def verify_scan(
     order = _resolve_order(order_id, token, user, db)
     items = OrderItemRepository(db).list_for_order(order.id)
 
-    match = _find_match(items, req)
+    match, reason = _find_match(items, req)
     if not match:
         # Deliberately not written to the database — a rejected scan is a
         # failed *attempt*, not a state transition (see _find_match). The
@@ -140,7 +164,7 @@ def verify_scan(
             "matched": False,
             "item": None,
             "order": OrderPublic.model_validate(order),
-            "reason": "That scan doesn't match any item still pending on this order.",
+            "reason": reason,
         })
 
     match.quantity_verified = min(match.quantity_verified + 1, match.quantity_expected)

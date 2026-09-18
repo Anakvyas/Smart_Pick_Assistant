@@ -1,8 +1,18 @@
 .demo-page {
+  position: relative;
+  overflow: hidden;
   min-height: 100svh;
   background: var(--bg);
   color: var(--text);
   padding-bottom: var(--sp-8);
+}
+
+/* Lifts every real piece of content above BackgroundDecor's absolutely
+   positioned, z-index:0 layer in one rule instead of repeating position/
+   z-index on each of this page's several flat top-level sections. */
+.demo-page > *:not(.bg-decor) {
+  position: relative;
+  z-index: 1;
 }
 
 .demo-page .app-header {

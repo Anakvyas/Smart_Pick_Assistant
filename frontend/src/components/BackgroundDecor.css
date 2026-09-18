@@ -1,0 +1,43 @@
+.bg-decor {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg-decor-icon {
+  position: absolute;
+  color: var(--brand-400);
+  opacity: 0.32;
+  transform: rotate(var(--rotate)) scale(1);
+  animation-name: bg-decor-pulse;
+  animation-timing-function: var(--ease);
+  animation-iteration-count: infinite;
+  will-change: opacity, transform;
+}
+
+/* Five-way color cycle across the app's existing palette (blue / green /
+   amber / red / neutral gray) instead of one flat tint — reads as a
+   genuinely colorful, varied scatter rather than a repeating watermark,
+   while every tone still comes from the same design-token palette used
+   everywhere else, so it stays cohesive rather than arbitrary neon. */
+.bg-decor-icon:nth-child(5n+2) { color: var(--success); }
+.bg-decor-icon:nth-child(5n+3) { color: var(--warning); }
+.bg-decor-icon:nth-child(5n+4) { color: var(--danger); }
+.bg-decor-icon:nth-child(5n) { color: var(--text-faint); }
+
+/* "Blinking, glow and shrink" — a breathing pulse: clearly visible at its
+   peak (so the color actually reads), dips toward faint and noticeably
+   smaller, then back. Never disappears fully (opacity floor above 0) so it
+   never pops in/out abruptly; transform + opacity only, so it's
+   compositor-driven and stays smooth even with 60+ of these animating at
+   once. */
+@keyframes bg-decor-pulse {
+  0%, 100% { opacity: 0.32; transform: rotate(var(--rotate)) scale(1); }
+  50% { opacity: 0.08; transform: rotate(var(--rotate)) scale(0.72); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-decor-icon { animation: none; opacity: 0.2; }
+}
