@@ -64,6 +64,30 @@
   font-weight: 500;
 }
 
+.scan-dialog-header-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scan-dialog-qr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background var(--fast) ease;
+}
+
+.scan-dialog-qr-btn:hover { background: rgba(255, 255, 255, 0.24); }
+
 .scan-dialog-close {
   flex-shrink: 0;
   width: 32px;
@@ -138,6 +162,31 @@
   background: rgba(30, 22, 4, 0.85);
   border: 1px solid rgba(217, 143, 10, 0.55);
   color: #ffd88a;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: fade-slide-up var(--base) var(--ease) both;
+  backdrop-filter: blur(6px);
+}
+
+/* Same slot/shape as .scan-hint, but blue-neutral — this is quiet feedback
+   for a scan that never left the device (already picked, or not on this
+   order), not a camera-quality coaching tip. Stays on the live camera the
+   whole time so nothing swaps screens for a duplicate/irrelevant scan. */
+.quick-note {
+  position: absolute;
+  top: var(--sp-3);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 28px);
+  padding: 8px 16px;
+  background: rgba(10, 16, 38, 0.85);
+  border: 1px solid rgba(84, 112, 214, 0.55);
+  color: #c7d3fb;
   border-radius: var(--r-pill);
   font-size: 13px;
   font-weight: 700;
@@ -236,6 +285,36 @@
   color: #ffd7d4;
 }
 
+/* Capture review — fully covers the live video (not a banner over it, like
+   the mismatch/no-product overlays): reviewing a still photo reads better
+   as a clean takeover than a translucent layer on top of a moving feed. */
+.capture-review-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+}
+
+.capture-review-img {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  object-fit: contain;
+  background: #000;
+}
+
+.capture-review-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+  padding: var(--sp-3);
+  background: rgba(10, 12, 20, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.capture-review-actions .btn { flex: 1; }
+
 .scan-dialog-status {
   display: flex;
   align-items: center;
@@ -260,13 +339,6 @@
 .scan-dialog .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
 .scan-dialog .live-pill.on { background: var(--success-bg); color: var(--success-strong); border-color: var(--success-border); }
 .scan-dialog .live-pill.on .live-dot { background: var(--success); box-shadow: 0 0 0 3px rgba(15, 157, 99, 0.18); }
-
-.scan-latency {
-  font-size: 12px;
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
 
 /* ------------------------------------------------------ outcome screens */
 .scan-outcome {
@@ -313,28 +385,275 @@
   line-height: 1.5;
 }
 
-.outcome-card {
+/* ScanDialog embeds the shared ResultPanel (same component /scan and
+   /display use) for the actual field breakdown + raw-JSON toggle, rather
+   than a second bespoke "card" — stretch it to full width against the
+   otherwise center-aligned outcome screen, and give it consistent
+   top/bottom spacing in that context. */
+.scan-outcome .result-panel {
   width: 100%;
+  align-self: stretch;
+  text-align: left;
+  margin: var(--sp-2) 0 var(--sp-4);
+}
+
+.scan-outcome .result-panel-empty { margin: var(--sp-2) 0 var(--sp-4); }
+
+.expected-vs-detected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 4px 0 var(--sp-3);
+}
+
+.evd-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   background: var(--surface-alt);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  padding: var(--sp-3) var(--sp-4);
-  margin: var(--sp-2) 0 var(--sp-4);
+  padding: var(--sp-3);
   text-align: left;
+  min-width: 0;
 }
 
-.outcome-card-title {
+.evd-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.evd-value {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 13.5px;
   word-break: break-word;
 }
 
-.outcome-card-sub {
-  margin-top: 4px;
+.evd-arrow {
+  flex-shrink: 0;
+  color: var(--danger);
+  font-weight: 800;
+  font-size: 16px;
+}
+
+/* -------------------------------------- non-blocking mismatch banner --- */
+/* Anchored to the bottom of the live camera stage, not a takeover screen —
+   the video keeps playing behind/above it the whole time. */
+.mismatch-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--sp-3);
+  background: rgba(18, 8, 8, 0.88);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(224, 84, 74, 0.4);
+  animation: fade-slide-up var(--base) var(--ease) both;
+}
+
+.mismatch-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #ffb3ae;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.mismatch-banner .expected-vs-detected.compact {
+  margin: 0 0 8px;
+  gap: 6px;
+}
+
+.mismatch-banner .evd-col {
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.mismatch-banner .evd-label { color: rgba(255, 255, 255, 0.55); }
+.mismatch-banner .evd-value { color: #fff; font-size: 12.5px; }
+
+.mismatch-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mismatch-actions .btn { flex: 1; }
+
+.btn-sm {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+}
+
+/* ------------------------------------------------- inline upload + OCR --- */
+.scan-dialog-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.upload-inline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  border-radius: var(--r-pill);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background var(--fast) ease, border-color var(--fast) ease, color var(--fast) ease;
+}
+
+.upload-inline-btn:hover:not(:disabled) { background: var(--brand-50); border-color: var(--brand-400); color: var(--brand-700); }
+.upload-inline-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.upload-inline-btn .spinner { width: 13px; height: 13px; border-color: var(--border-strong); border-left-color: var(--text-muted); }
+
+.upload-inline-error {
+  margin: 0 var(--sp-4) var(--sp-2);
+  font-size: 12.5px;
+}
+
+/* --------------------------------------------------- mark unavailable --- */
+.mark-unavailable-link {
+  display: block;
+  width: calc(100% - var(--sp-8));
+  margin: 0 var(--sp-4) var(--sp-3);
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 4px;
+  transition: color var(--fast) ease;
+}
+
+.mark-unavailable-link:hover { color: var(--warning-strong); }
+
+.unavailable-confirm {
+  margin: 0 var(--sp-4) var(--sp-4);
+  padding: var(--sp-4);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--r-lg);
+  animation: fade-slide-up var(--base) var(--ease) both;
+}
+
+.unavailable-confirm-title {
+  margin: 0 0 3px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.unavailable-confirm-sub {
+  margin: 0 0 var(--sp-3);
   font-size: 12.5px;
   color: var(--text-muted);
+}
+
+.unavailable-reason-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: var(--sp-3);
+}
+
+.unavailable-reason-btn {
+  background: var(--surface);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-strong);
+  border-radius: var(--r-md);
+  padding: 10px 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: background var(--fast) ease, transform var(--fast) ease;
+}
+
+.unavailable-reason-btn:hover { background: var(--warning-bg); }
+.unavailable-reason-btn:active { transform: scale(0.97); }
+
+.unavailable-cancel-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px;
+}
+
+.unavailable-cancel-btn:hover { color: var(--text); }
+
+.live-result-section {
+  margin: 0 var(--sp-4) var(--sp-4);
+}
+
+.live-result-section .section-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  margin: 0 0 var(--sp-2);
+}
+
+.ocr-json-section {
+  margin: 0 var(--sp-4) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-alt);
+  overflow: hidden;
+}
+
+.ocr-json-section summary {
+  padding: 10px var(--sp-3);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.ocr-json-section summary::-webkit-details-marker { display: none; }
+
+.ocr-json-section summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform var(--fast) ease;
+}
+
+.ocr-json-section[open] summary::before { transform: rotate(90deg); }
+
+.ocr-json-section .raw-json {
+  margin: 0;
+  padding: var(--sp-3);
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
   line-height: 1.5;
+  color: var(--brand-700);
+  overflow-x: auto;
+  max-height: 260px;
+  overflow-y: auto;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .outcome-tips {

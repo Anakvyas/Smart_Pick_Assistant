@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ordersApi } from '../api/ordersApi';
 import ScanDialog from '../components/ScanDialog';
+import OrderWatchDialog from '../components/OrderWatchDialog';
 
 function getInitials(name) {
   if (!name) return 'P';
@@ -24,7 +25,7 @@ function formatTime(iso) {
   }
 }
 
-function OrderCard({ order, onScan }) {
+function OrderCard({ order, onScan, onWatch }) {
   const meta = STATUS_META[order.status] || { label: order.status, variant: 'neutral' };
   const pct = order.unit_count > 0 ? Math.round((order.picked_count / order.unit_count) * 100) : 0;
 
@@ -68,6 +69,15 @@ function OrderCard({ order, onScan }) {
       >
         {order.status === 'COMPLETED' ? 'View details' : 'Scan to pick'}
       </button>
+      {order.status !== 'COMPLETED' && (
+        <button type="button" className="watch-link-button" onClick={() => onWatch(order)}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20v.01" />
+          </svg>
+          Scan with another phone instead
+        </button>
+      )}
     </div>
   );
 }
@@ -85,7 +95,14 @@ function OrderSkeleton() {
 function DashboardPage() {
   const { user, logout } = useAuth();
   const [state, setState] = useState({ status: 'loading', orders: [], error: null });
+  // Two separate dialogs, not one with a mode toggle: "Scan to pick" opens
+  // the camera scanner directly on whatever device is viewing this page
+  // (the common case — a picker's own phone) — no QR detour needed when
+  // the device in your hand already has the camera. "Scan with another
+  // phone" is the deliberate opt-in for handing scanning off to a
+  // different device, via the QR + live watch view.
   const [scanningOrder, setScanningOrder] = useState(null);
+  const [watchingOrder, setWatchingOrder] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -106,14 +123,12 @@ function DashboardPage() {
     window.location.href = '/login';
   };
 
-  // Optimistic only — there's no backend endpoint yet to persist a pick, so
-  // this just reflects the successful scan in the current session's list.
-  const handleVerified = (order) => {
+  // Every verify call returns the order exactly as the backend now has it
+  // (picked_count, status) — just swap it in rather than guessing locally.
+  const handleOrderUpdated = (updatedOrder) => {
     setState((s) => ({
       ...s,
-      orders: s.orders.map((o) => o.id === order.id
-        ? { ...o, picked_count: Math.min(o.picked_count + 1, o.unit_count) }
-        : o),
+      orders: s.orders.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)),
     }));
   };
 
@@ -180,7 +195,7 @@ function DashboardPage() {
           )}
 
           {state.status === 'done' && state.orders.map((order) => (
-            <OrderCard key={order.id} order={order} onScan={setScanningOrder} />
+            <OrderCard key={order.id} order={order} onScan={setScanningOrder} onWatch={setWatchingOrder} />
           ))}
         </div>
       </section>
@@ -189,7 +204,17 @@ function DashboardPage() {
         <ScanDialog
           order={scanningOrder}
           onClose={() => setScanningOrder(null)}
-          onVerified={handleVerified}
+          onOrderUpdated={handleOrderUpdated}
+          onShowQR={() => { setWatchingOrder(scanningOrder); setScanningOrder(null); }}
+        />
+      )}
+
+      {watchingOrder && (
+        <OrderWatchDialog
+          order={watchingOrder}
+          onClose={() => setWatchingOrder(null)}
+          onOrderUpdated={handleOrderUpdated}
+          onShowScanner={() => { setScanningOrder(watchingOrder); setWatchingOrder(null); }}
         />
       )}
     </main>

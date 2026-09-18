@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSocket } from '../hooks/useSocket'
 import { httpUrl } from '../config'
+import { isTrustworthyRead, mergeFrame } from '../lib/scanAggregation'
 import ResultPanel from '../components/ResultPanel'
 import AuthStatus from '../components/AuthStatus'
 import './Scan.css'
@@ -15,6 +16,13 @@ export default function Scan() {
   const inflightRef = useRef(false)
   const sendRef = useRef(() => false)
   const pumpRef = useRef(() => {})
+  // Accumulates fields across consecutive trustworthy frames into one
+  // stable live result instead of showing/discarding whatever the single
+  // latest frame happened to carry — same logic ScanDialog.jsx uses for
+  // the per-order scanner, see lib/scanAggregation for why. Keeps a noisy
+  // one-frame OCR blip ("caps lock", stray background text) from ever
+  // being shown as if it were a real product read.
+  const mergeRef = useRef(null)
 
   const [cameraError, setCameraError] = useState(null)
   const [latency, setLatency] = useState('—')
@@ -83,7 +91,22 @@ export default function Scan() {
     const isNoProduct = r.product_detected === false || r.hint_kind === 'no_product'
     setHint(isNoProduct ? null : r.hint || null)
     setNoProduct(isNoProduct)
-    setResult(r)
+
+    if (r.valid && isTrustworthyRead(r)) {
+      // A confident read (barcode, or a name with a corroborating field) —
+      // merge it into the running result so the panel shows a stable,
+      // filled-in product instead of flickering between whatever each
+      // individual frame happened to catch.
+      mergeRef.current = mergeFrame(mergeRef.current, r)
+      setResult(mergeRef.current)
+    } else if (!r.valid) {
+      // Genuinely nothing in frame — clear the stable result rather than
+      // leaving a stale product showing once it's actually gone.
+      mergeRef.current = null
+      setResult(r)
+    }
+    // else: r.valid but not trustworthy (a noisy one-field OCR blip) —
+    // leave the last stable result on screen rather than replacing it.
 
     pump()
   }, [pump])
@@ -115,9 +138,15 @@ export default function Scan() {
       }
       try {
         stream = await navigator.mediaDevices.getUserMedia({
+          // frameRate pinned (not left to the camera's default/variable
+          // rate) — see ScanDialog.jsx's identical constraint for why: an
+          // unconstrained rate is what most often beats against indoor
+          // lighting's own 50/60Hz flicker and shows up as a visible
+          // strobe in the preview.
           video: {
             facingMode: { ideal: 'environment' },
             width: { ideal: 1280 }, height: { ideal: 720 },
+            frameRate: { ideal: 30, max: 30 },
           },
           audio: false,
         })
@@ -126,6 +155,16 @@ export default function Scan() {
           videoRef.current.srcObject = stream
           await videoRef.current.play()
         }
+        // Best-effort continuous-autofocus hint — see ScanDialog.jsx's
+        // identical block for why; silently ignored wherever unsupported
+        // (Safari/iOS entirely, and most non-Chromium browsers).
+        try {
+          const track = stream.getVideoTracks()[0]
+          const caps = track?.getCapabilities?.()
+          if (caps?.focusMode?.includes('continuous')) {
+            await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+          }
+        } catch { /* unsupported here — the camera still works, just without this hint */ }
       } catch (e) {
         if (cancelled) return
         setCameraError(
@@ -276,7 +315,11 @@ export default function Scan() {
 
       <div className="live-result">
         <div className="section-label">Live result</div>
-        <ResultPanel result={result} placeholder="Point the camera at a product to see results here" />
+        <ResultPanel
+          result={result}
+          placeholder="Point the camera at a product to see results here"
+          defaultShowRaw
+        />
       </div>
 
       {upload && (

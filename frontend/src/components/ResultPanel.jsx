@@ -9,8 +9,8 @@ import './ResultPanel.css'
  * a developer or a curious user can see precisely what came back without
  * the app hiding anything behind the pretty view.
  */
-export default function ResultPanel({ result, placeholder }) {
-  const [showRaw, setShowRaw] = useState(false)
+export default function ResultPanel({ result, placeholder, defaultShowRaw = false }) {
+  const [showRaw, setShowRaw] = useState(defaultShowRaw)
 
   if (!result) {
     return placeholder ? <div className="result-panel result-panel-empty">{placeholder}</div> : null

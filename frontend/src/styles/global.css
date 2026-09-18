@@ -502,6 +502,24 @@
 
 .secondary-button:hover { box-shadow: 0 12px 26px rgba(52, 80, 184, 0.34); }
 
+.watch-link-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 4px;
+  transition: color var(--fast) ease;
+}
+
+.watch-link-button:hover { color: var(--brand-600); }
+
 .order-skeleton {
   border-radius: var(--r-md);
   padding: 16px;

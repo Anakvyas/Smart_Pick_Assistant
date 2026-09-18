@@ -23,6 +23,7 @@ export default function AuthStatus() {
 
   return (
     <span className="auth-status">
+      <Link to="/dashboard" className="auth-status-dashboard">dashboard</Link>
       {user?.name || user?.email}
       <button type="button" className="auth-status-logout" onClick={logout}>
         log out

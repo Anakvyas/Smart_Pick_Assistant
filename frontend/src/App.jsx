@@ -5,6 +5,7 @@ import Demo from './pages/Demo'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import DashboardPage from './pages/DashboardPage'
+import OrderScanPage from './pages/OrderScanPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import './styles/global.css'
@@ -41,6 +42,11 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      {/* Not wrapped in ProtectedRoute — the QR code embeds its own
+          short-lived, order-scoped token (see OrderScanPage), so this must
+          stay reachable without a login. OrderScanPage itself falls back
+          to requiring one only when there's no token in the URL. */}
+      <Route path="/pick/:orderId" element={<OrderScanPage />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

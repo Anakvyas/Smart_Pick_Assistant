@@ -24,6 +24,16 @@
   background: var(--brand-100);
 }
 
+.auth-status-dashboard {
+  color: var(--brand-600);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.auth-status-dashboard:hover {
+  text-decoration: underline;
+}
+
 .auth-status-logout {
   background: none;
   border: none;
