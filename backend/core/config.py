@@ -19,12 +19,23 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480
 
+    # Comma-separated — the phone (via a QR code) and the PC dashboard are
+    # very often on two different origins at once (an ngrok https:// URL
+    # for the phone's camera requirement, localhost or a LAN IP for the
+    # PC), and CORS only allows what's listed here. A single hardcoded
+    # origin silently breaks every fetch from any other origin — the
+    # browser just blocks the response, which looks exactly like "the
+    # backend isn't responding" with no error message to explain why.
     client_origin: str = "http://localhost:5173"
     cookie_name: str = "picker_session"
 
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def client_origins(self) -> list[str]:
+        return [o.strip() for o in self.client_origin.split(",") if o.strip()]
 
 
 @lru_cache

@@ -47,7 +47,20 @@ app = FastAPI()
 settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.client_origin],
+    allow_origins=settings.client_origins,
+    # Dev convenience only, never enabled in production (there this must
+    # come from an explicit CLIENT_ORIGIN): covers the two ways this app
+    # gets opened from somewhere other than plain localhost —
+    #  - an ngrok URL, which changes every time the tunnel restarts
+    #  - the dashboard itself opened via its LAN IP (Vite's `host: true`
+    #    exposes it there) rather than localhost, e.g. from a phone
+    # Without this, either one silently breaks every fetch with no error
+    # message beyond "the backend isn't responding".
+    allow_origin_regex=None if settings.is_production else (
+        r"https://.*\.ngrok(-free)?\.app"
+        r"|https://.*\.ngrok\.io"
+        r"|http://(192\.168|10\.\d{1,3}|172\.(1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}(:\d+)?"
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

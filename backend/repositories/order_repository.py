@@ -19,3 +19,11 @@ class OrderRepository:
     def get_for_picker(self, order_id, picker_id):
         stmt = select(Order).where(Order.id == order_id, Order.picker_id == picker_id)
         return self.db.execute(stmt).scalars().one_or_none()
+
+    def get_by_id(self, order_id):
+        # Unscoped by picker — only used for the QR scan-token path (see
+        # controllers/order_controller.py's _resolve_order), where the
+        # token itself (not a logged-in user) is what proves access to this
+        # one order.
+        stmt = select(Order).where(Order.id == order_id)
+        return self.db.execute(stmt).scalars().one_or_none()

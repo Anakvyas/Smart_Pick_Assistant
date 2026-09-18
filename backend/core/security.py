@@ -31,3 +31,33 @@ def create_access_token(subject: str, role: str) -> str:
 
 def decode_access_token(token: str) -> dict:
     return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+
+
+# A separate, narrower token type for the order QR-scan flow (see
+# routes/orders.py's /scan-token, /items, /verify) — a phone scanning a
+# picker's QR code shouldn't need to log in first, same philosophy as the
+# original /scan and /display pages being open to anonymous phones (see
+# AuthStatus.jsx). Distinct from create_access_token's full login session:
+# it carries no identity, only "this bearer may act on this one order until
+# it expires", so a leaked scan token can't be used for anything beyond
+# that single order for a limited time.
+SCAN_TOKEN_TYPE = "order_scan"
+SCAN_TOKEN_EXPIRE_MINUTES = 12 * 60  # a full picking shift
+
+
+def create_scan_token(order_id: str) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=SCAN_TOKEN_EXPIRE_MINUTES)
+    payload = {"order_id": order_id, "type": SCAN_TOKEN_TYPE, "exp": expire}
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def decode_scan_token(token: str, order_id: str) -> bool:
+    """True only if `token` is a valid, unexpired scan token for exactly
+    this order — any decode failure or mismatch is just "not valid",
+    never an exception the caller has to handle.
+    """
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    except Exception:
+        return False
+    return payload.get("type") == SCAN_TOKEN_TYPE and payload.get("order_id") == str(order_id)

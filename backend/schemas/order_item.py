@@ -13,5 +13,7 @@ class OrderItemPublic(BaseModel):
     quantity_verified: int
     status: str
     verified_at: Optional[datetime] = None
+    unavailable_reason: Optional[str] = None
+    unavailable_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

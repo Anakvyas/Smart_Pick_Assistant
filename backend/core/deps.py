@@ -1,6 +1,8 @@
 """Shared FastAPI dependencies — currently just "who is making this
 request", read from the same JWT cookie login/signup already set.
 """
+from __future__ import annotations  # for `User | None` below, on Python 3.9
+
 import uuid
 
 from fastapi import Depends, Request
@@ -35,3 +37,15 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     if not user or not user.is_active:
         raise AuthRequiredError()
     return user
+
+
+def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -> User | None:
+    """Same as get_current_user, but returns None instead of raising when
+    there's no valid session — for routes that accept a logged-in picker
+    *or* a QR scan-token (see routes/orders.py's items/verify), where the
+    absence of a cookie isn't itself an error, just "try the other way".
+    """
+    try:
+        return get_current_user(request, db)
+    except AuthRequiredError:
+        return None

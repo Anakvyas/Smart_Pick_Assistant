@@ -29,10 +29,22 @@ class OrderItem(Base):
     quantity_expected: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     quantity_verified: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    # PENDING | VERIFIED — mirrors Order.status's plain-string-enum style.
+    # PENDING | VERIFIED | UNAVAILABLE — mirrors Order.status's plain-
+    # string-enum style. Both VERIFIED and UNAVAILABLE are terminal: an
+    # order is complete once every item is in one or the other (see
+    # controllers/order_controller.py's _order_is_complete). A rejected
+    # scan attempt is deliberately NOT a status here at all — it's just a
+    # scan that didn't match, the item stays PENDING and can be
+    # scanned/uploaded again immediately (see verify_scan).
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING")
+
+    # Only set when status == "UNAVAILABLE" — a short picker-supplied reason
+    # (out of stock / damaged / missing from shelf / other), free text
+    # rather than an enum since the business reasons aren't fixed yet.
+    unavailable_reason: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    unavailable_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

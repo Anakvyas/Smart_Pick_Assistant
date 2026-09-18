@@ -15,3 +15,7 @@ class OrderItemRepository:
             .order_by(OrderItem.created_at.asc())
         )
         return self.db.execute(stmt).scalars().all()
+
+    def get_for_order(self, item_id, order_id):
+        stmt = select(OrderItem).where(OrderItem.id == item_id, OrderItem.order_id == order_id)
+        return self.db.execute(stmt).scalars().one_or_none()

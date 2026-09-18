@@ -61,3 +61,9 @@ class OrderNotFoundError(AppException):
     status_code = 404
     code = "ORDER_NOT_FOUND"
     message = "Order not found."
+
+
+class OrderItemNotFoundError(AppException):
+    status_code = 404
+    code = "ORDER_ITEM_NOT_FOUND"
+    message = "That item isn't on this order."
