@@ -1,7 +1,11 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { httpUrl } from '../config'
 
+// Routed through the same same-origin proxy (Vite's /api -> :8000) every
+// other request in this app already uses — not a separate VITE_API_URL
+// pointing at the old standalone Node auth server's port, which no longer
+// exists now that auth lives in the same FastAPI process as the scanner.
 export async function apiRequest(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(httpUrl(path), {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
@@ -21,5 +25,3 @@ export async function apiRequest(path, options = {}) {
 
   return data;
 }
-
-export default API_BASE_URL;

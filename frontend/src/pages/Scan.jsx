@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSocket } from '../hooks/useSocket'
 import { httpUrl } from '../config'
+import { isTrustworthyRead, mergeFrame } from '../lib/scanAggregation'
 import ResultPanel from '../components/ResultPanel'
+import AuthStatus from '../components/AuthStatus'
 import './Scan.css'
 
 export default function Scan() {
@@ -14,6 +16,13 @@ export default function Scan() {
   const inflightRef = useRef(false)
   const sendRef = useRef(() => false)
   const pumpRef = useRef(() => {})
+  // Accumulates fields across consecutive trustworthy frames into one
+  // stable live result instead of showing/discarding whatever the single
+  // latest frame happened to carry — same logic ScanDialog.jsx uses for
+  // the per-order scanner, see lib/scanAggregation for why. Keeps a noisy
+  // one-frame OCR blip ("caps lock", stray background text) from ever
+  // being shown as if it were a real product read.
+  const mergeRef = useRef(null)
 
   const [cameraError, setCameraError] = useState(null)
   const [latency, setLatency] = useState('—')
@@ -82,7 +91,22 @@ export default function Scan() {
     const isNoProduct = r.product_detected === false || r.hint_kind === 'no_product'
     setHint(isNoProduct ? null : r.hint || null)
     setNoProduct(isNoProduct)
-    setResult(r)
+
+    if (r.valid && isTrustworthyRead(r)) {
+      // A confident read (barcode, or a name with a corroborating field) —
+      // merge it into the running result so the panel shows a stable,
+      // filled-in product instead of flickering between whatever each
+      // individual frame happened to catch.
+      mergeRef.current = mergeFrame(mergeRef.current, r)
+      setResult(mergeRef.current)
+    } else if (!r.valid) {
+      // Genuinely nothing in frame — clear the stable result rather than
+      // leaving a stale product showing once it's actually gone.
+      mergeRef.current = null
+      setResult(r)
+    }
+    // else: r.valid but not trustworthy (a noisy one-field OCR blip) —
+    // leave the last stable result on screen rather than replacing it.
 
     pump()
   }, [pump])
@@ -114,9 +138,15 @@ export default function Scan() {
       }
       try {
         stream = await navigator.mediaDevices.getUserMedia({
+          // frameRate pinned (not left to the camera's default/variable
+          // rate) — see ScanDialog.jsx's identical constraint for why: an
+          // unconstrained rate is what most often beats against indoor
+          // lighting's own 50/60Hz flicker and shows up as a visible
+          // strobe in the preview.
           video: {
             facingMode: { ideal: 'environment' },
             width: { ideal: 1280 }, height: { ideal: 720 },
+            frameRate: { ideal: 30, max: 30 },
           },
           audio: false,
         })
@@ -125,6 +155,16 @@ export default function Scan() {
           videoRef.current.srcObject = stream
           await videoRef.current.play()
         }
+        // Best-effort continuous-autofocus hint — see ScanDialog.jsx's
+        // identical block for why; silently ignored wherever unsupported
+        // (Safari/iOS entirely, and most non-Chromium browsers).
+        try {
+          const track = stream.getVideoTracks()[0]
+          const caps = track?.getCapabilities?.()
+          if (caps?.focusMode?.includes('continuous')) {
+            await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+          }
+        } catch { /* unsupported here — the camera still works, just without this hint */ }
       } catch (e) {
         if (cancelled) return
         setCameraError(
@@ -162,15 +202,15 @@ export default function Scan() {
 
       for (const b of boxesRef.current) {
         const x = b.box.x * w, y = b.box.y * h, bw = b.box.w * w, bh = b.box.h * h
-        ctx.strokeStyle = '#25d366'
+        ctx.strokeStyle = '#0f9d63'
         ctx.strokeRect(x, y, bw, bh)
 
         const text = b.kind + ' · ' + b.value
         const tw = ctx.measureText(text).width
         const ty = y > 20 ? y - 19 : y + bh + 2
-        ctx.fillStyle = '#25d366'
+        ctx.fillStyle = '#0f9d63'
         ctx.fillRect(x, ty, tw + 10, 18)
-        ctx.fillStyle = '#04120a'
+        ctx.fillStyle = '#ffffff'
         ctx.fillText(text, x + 5, ty + 2)
       }
       ctx.globalAlpha = 1
@@ -211,19 +251,32 @@ export default function Scan() {
           <span className="brand-dot" />
           Smart Pick <span className="brand-sub">scanner</span>
         </div>
-        <span className={`live-pill${isLive ? ' on' : ''}`}>
-          <span className="live-dot" />{statusText}
-        </span>
+        <div className="header-right">
+          <AuthStatus />
+          <span className={`live-pill${isLive ? ' on' : ''}`}>
+            <span className="live-dot" />{statusText}
+          </span>
+        </div>
       </header>
 
       <div className="stage">
         <video ref={videoRef} autoPlay playsInline muted />
         <canvas ref={overlayRef} className="overlay" />
 
+        {!noProduct && !result?.valid && (
+          <div className="viewfinder" aria-hidden="true">
+            <span className="vf-corner tl" /><span className="vf-corner tr" />
+            <span className="vf-corner bl" /><span className="vf-corner br" />
+          </div>
+        )}
+
         {noProduct && (
           <div className="no-product-overlay">
             <div className="no-product-badge">
-              <span className="no-product-icon">🔍</span>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4.3-4.3M8 11h6" />
+              </svg>
               NO PRODUCT DETECTED
               <span className="no-product-sub">point the camera at a product label</span>
             </div>
@@ -237,7 +290,10 @@ export default function Scan() {
         <span className="count">{count}</span>
         <span className="lat">{latency}</span>
         <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>
-          ⬆ upload photo
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 19V5M5 12l7-7 7 7" />
+          </svg>
+          Upload photo
         </button>
       </div>
       <input
@@ -248,21 +304,38 @@ export default function Scan() {
         onChange={onUploadFile}
         hidden
       />
-      {cameraError && <div className="err">{cameraError}</div>}
+      {cameraError && (
+        <div className="err">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" />
+          </svg>
+          {cameraError}
+        </div>
+      )}
 
       <div className="live-result">
-        <div className="section-label">live result</div>
-        <ResultPanel result={result} placeholder="point the camera at a product to see results here" />
+        <div className="section-label">Live result</div>
+        <ResultPanel
+          result={result}
+          placeholder="Point the camera at a product to see results here"
+          defaultShowRaw
+        />
       </div>
 
       {upload && (
         <div className="upload-panel">
           <div className="upload-panel-head">
             <img src={upload.previewUrl} alt="Uploaded product" />
-            <button className="close-btn" onClick={() => setUpload(null)}>×</button>
+            <button className="close-btn" onClick={() => setUpload(null)} aria-label="Close">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
           </div>
           <div className="upload-panel-body">
-            {upload.status === 'loading' && <p className="state">analyzing…</p>}
+            {upload.status === 'loading' && (
+              <p className="state"><span className="spinner brand" aria-hidden="true" />analyzing…</p>
+            )}
             {upload.status === 'error' && <p className="state error">Couldn't analyze that photo: {upload.error}</p>}
             {upload.status === 'done' && <ResultPanel result={upload.result} />}
           </div>

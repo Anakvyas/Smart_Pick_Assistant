@@ -59,9 +59,18 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    await authApi.logout();
-    setUser(null);
-    setIsAuthenticated(false);
+    // Clear local state regardless of whether the server call succeeds —
+    // there's no /logout route on the backend yet (signup/login only, so
+    // far), and a picker clicking "log out" should see themselves signed
+    // out here either way rather than the button looking broken.
+    try {
+      await authApi.logout();
+    } catch {
+      // ignored — see above
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   };
 
   const value = useMemo(() => ({

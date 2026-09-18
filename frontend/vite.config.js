@@ -17,11 +17,16 @@ export default defineConfig({
     // Forwards to the FastAPI backend (backend/app.py) so the whole app is
     // reachable through one origin/port — required for a single ngrok
     // tunnel to work, since ngrok maps one public URL to one local port.
-    // No path collision to route around here (unlike the old /upload page
-    // route): the backend's own routes all live under /ws and /api.
+    // /demo/images specifically (not plain /demo — that's the React Router
+    // /demo *page*, which must still fall through to the SPA): the demo
+    // product barcode images, served by app.py's StaticFiles mount, were
+    // missing a proxy rule entirely — a request for /demo/images/*.png
+    // silently fell through to Vite's SPA history fallback and got
+    // index.html back instead of the actual image.
     proxy: {
       '/ws': { target: 'ws://localhost:8000', ws: true },
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
+      '/demo/images': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
 })

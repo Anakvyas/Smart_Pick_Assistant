@@ -9,8 +9,8 @@ import './ResultPanel.css'
  * a developer or a curious user can see precisely what came back without
  * the app hiding anything behind the pretty view.
  */
-export default function ResultPanel({ result, placeholder }) {
-  const [showRaw, setShowRaw] = useState(false)
+export default function ResultPanel({ result, placeholder, defaultShowRaw = false }) {
+  const [showRaw, setShowRaw] = useState(defaultShowRaw)
 
   if (!result) {
     return placeholder ? <div className="result-panel result-panel-empty">{placeholder}</div> : null
@@ -25,6 +25,16 @@ export default function ResultPanel({ result, placeholder }) {
 
   return (
     <div className="result-panel">
+      <div className="result-status-row">
+        <span className={`status-pill ${result.valid ? 'success' : 'danger'}`}>
+          <span className="dot" />
+          {result.valid ? 'Product recognised' : 'Not recognised'}
+        </span>
+        {result.latency_ms != null && (
+          <span className="result-latency">{result.latency_ms} ms</span>
+        )}
+      </div>
+
       {codes.length > 0 && (
         <div className="result-codes">
           {codes.map((c, i) => (

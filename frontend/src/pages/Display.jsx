@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
 import QrCode from '../components/QrCode'
 import ResultPanel from '../components/ResultPanel'
+import AuthStatus from '../components/AuthStatus'
 import { FIELD_KEYS, FIELD_LABELS } from '../lib/productFields'
 import { PUBLIC_URL_OVERRIDE, isLocalOrigin, httpUrl } from '../config'
 import './Display.css'
@@ -184,9 +185,9 @@ export default function Display() {
       if (performance.now() - lastAtRef.current > 2500) return
 
       ctx.lineWidth = 2.5
-      ctx.font = '600 13px system-ui, sans-serif'
+      ctx.font = '600 13px Inter, system-ui, sans-serif'
       ctx.textBaseline = 'top'
-      ctx.strokeStyle = '#25d366'
+      ctx.strokeStyle = '#0f9d63'
 
       for (const b of boxesRef.current) {
         const x = b.box.x * w, y = b.box.y * h, bw = b.box.w * w, bh = b.box.h * h
@@ -194,9 +195,9 @@ export default function Display() {
         const text = b.kind + ' · ' + b.value
         const tw = ctx.measureText(text).width
         const ty = y > 20 ? y - 19 : y + bh + 2
-        ctx.fillStyle = '#25d366'
+        ctx.fillStyle = '#0f9d63'
         ctx.fillRect(x, ty, tw + 10, 18)
-        ctx.fillStyle = '#04120a'
+        ctx.fillStyle = '#ffffff'
         ctx.fillText(text, x + 5, ty + 2)
       }
     }
@@ -253,26 +254,45 @@ export default function Display() {
             <span className="brand-dot" />
             Smart Pick <span className="brand-sub">display</span>
           </div>
-          <Link to="/demo" className="demo-link">view demo products</Link>
+          <div className="header-right">
+            <AuthStatus />
+            <Link to="/demo" className="demo-link">view demo products</Link>
+          </div>
         </header>
 
         <div className="stage">
-          <img ref={imgRef} id="frame" alt="" src={imageSrc || undefined} />
+          {imageSrc
+            ? <img ref={imgRef} id="frame" alt="" src={imageSrc} />
+            : <div className="stage-empty skeleton" />}
           <canvas ref={overlayRef} className="ov" />
+          {!imageSrc && (
+            <div className="stage-empty-label">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="m3 15 4.5-4.5a2 2 0 0 1 2.8 0L15 15" />
+                <circle cx="16" cy="9" r="1.5" />
+              </svg>
+              waiting for a scanner to connect…
+            </div>
+          )}
           {noProduct && (
             <div className="no-product-overlay">
               <div className="no-product-badge">
-                <span className="no-product-icon">🔍</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" />
+                </svg>
                 NO PRODUCT DETECTED
               </div>
             </div>
           )}
         </div>
         <div className="meta">
-          <span className="conn">{connText}</span>
+          <span className={`status-pill ${status !== 'open' ? 'neutral' : itemInFrame ? 'success' : 'neutral'}`}>
+            <span className="dot" />{connText}
+          </span>
           <span className="lat">{latency}</span>
           <span className="fps">{fps}</span>
-          <span className="scanhint">{scanHint}</span>
+          {scanHint && <span className="scanhint">{scanHint}</span>}
         </div>
         <div className="qr-row">
           <QrCode value={scanUrl} label="scan on your phone" size={140} />
@@ -284,15 +304,20 @@ export default function Display() {
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
           >
-            <span className="dropzone-icon">🖼️</span>
-            <span className="dropzone-text">upload a photo from this computer</span>
-            <span className="dropzone-sub">click or drag & drop</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 16V4M7 9l5-5 5 5" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+            </svg>
+            <span className="dropzone-text">Upload a photo from this computer</span>
+            <span className="dropzone-sub">click or drag &amp; drop</span>
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={onFilePicked} hidden />
         </div>
         {showLocalWarning && (
           <div className="local-warning">
-            ⚠️ This page is open at <code>{window.location.host}</code> — a phone can't
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+            </svg>
+            This page is open at <code>{window.location.host}</code> — a phone can't
             reach "localhost", so this QR code won't work. Open this page through your
             ngrok URL instead (or your LAN IP, printed by <code>npm run dev</code>), or
             set <code>VITE_PUBLIC_URL</code> in <code>frontend/.env</code>.
@@ -303,10 +328,16 @@ export default function Display() {
           <div className="upload-panel">
             <div className="upload-panel-head">
               <img src={upload.previewUrl} alt="Uploaded product" />
-              <button className="close-btn" onClick={() => setUpload(null)}>×</button>
+              <button className="close-btn" onClick={() => setUpload(null)} aria-label="Close">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
             </div>
             <div className="upload-panel-body">
-              {upload.status === 'loading' && <p className="state">analyzing…</p>}
+              {upload.status === 'loading' && (
+                <p className="state"><span className="spinner brand" aria-hidden="true" />analyzing…</p>
+              )}
               {upload.status === 'error' && <p className="state error">Couldn't analyze that photo: {upload.error}</p>}
               {upload.status === 'done' && <ResultPanel result={upload.result} />}
             </div>
@@ -320,15 +351,27 @@ export default function Display() {
           <button onClick={clearInventory}>clear</button>
         </div>
         <div className="items">
-          {items.length === 0 && <div className="item muted">nothing detected yet</div>}
+          {items.length === 0 && (
+            <div className="empty-items">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 7l9-4 9 4-9 4-9-4Z" /><path d="M3 7v10l9 4 9-4V7" /><path d="M12 11v10" />
+              </svg>
+              nothing detected yet
+            </div>
+          )}
           {items.map((i, idx) => {
             const rows = FIELD_KEYS.filter((k) => i[k])
+            const isFresh = now != null && now - i.at < 1500
             return (
-              <div key={idx} className={`item${now != null && now - i.at < 1500 ? ' fresh' : ''}`}>
-                <span className="k">{i.kind}</span> — {i.value}
+              <div key={idx} className={`item${isFresh ? ' fresh' : ''}`}>
+                <div className="item-head">
+                  <span className="k">{i.kind}</span>
+                  {isFresh && <span className="status-pill success"><span className="dot" />live</span>}
+                </div>
+                <div className="item-value">{i.value}</div>
                 {rows.length === 0
                   ? <div className="exp none">no label info found</div>
-                  : rows.map((k) => <div className="exp" key={k}>{FIELD_LABELS[k]}: {i[k]}</div>)}
+                  : rows.map((k) => <div className="exp" key={k}><span>{FIELD_LABELS[k]}</span>{i[k]}</div>)}
                 <div className="seen">seen {i.count}×</div>
               </div>
             )

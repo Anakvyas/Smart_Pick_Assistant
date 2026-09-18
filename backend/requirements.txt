@@ -1,0 +1,25 @@
+fastapi
+uvicorn[standard]
+python-multipart
+python-dotenv
+requests
+python-dateutil
+opencv-python
+numpy
+onnxruntime
+zxing-cpp<3.0.0  # 3.x dropped prebuilt wheels for Python 3.9; pin to the last that has one
+rapidocr-onnxruntime
+
+# auth (signup/login/dashboard) — merged in from the former fastapi-backend/
+sqlalchemy>=2.0.35
+psycopg[binary]>=3.2.0
+alembic>=1.13.0
+pydantic>=2.9.0
+pydantic[email]>=2.9.0
+pydantic-settings>=2.5.0
+pwdlib[argon2,bcrypt]>=0.2.0
+pyjwt>=2.9.0
+
+# tests (auth's test suite: pytest + FastAPI's TestClient, which needs httpx)
+pytest>=8.3.0
+httpx>=0.27.0
