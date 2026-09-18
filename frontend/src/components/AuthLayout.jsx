@@ -1,6 +1,9 @@
+import BackgroundDecor from './BackgroundDecor';
+
 function AuthLayout({ title, subtitle, children, footer }) {
   return (
     <main className="auth-shell">
+      <BackgroundDecor />
       <section className="auth-card">
         <div className="brand-block">
           <div className="brand-mark" aria-hidden="true">

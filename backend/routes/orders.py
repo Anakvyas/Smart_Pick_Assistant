@@ -3,12 +3,14 @@ from __future__ import annotations  # for `str | None` below, on Python 3.9
 import uuid
 
 from fastapi import APIRouter, Depends
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from controllers import order_controller
 from core.deps import get_current_user, get_current_user_optional
 from db.session import get_db
 from models.user import User
+from routes import scan
 from schemas.mark_unavailable import MarkUnavailableRequest
 from schemas.response import SuccessResponse
 from schemas.scan_verify import ScanVerifyRequest
@@ -58,18 +60,29 @@ def order_items(
 
 
 @router.post("/{order_id}/verify", response_model=SuccessResponse)
-def verify_order_scan(
+async def verify_order_scan(
     order_id: uuid.UUID,
     body: ScanVerifyRequest,
     token: str | None = None,
     user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ) -> SuccessResponse:
-    return order_controller.verify_scan(order_id, body, token, user, db)
+    result = order_controller.verify_scan(order_id, body, token, user, db)
+    if result.data.get("matched"):
+        # Pushed so a PC watching this order (OrderWatchDialog) updates its
+        # checklist the instant a phone (or the PC's own upload) verifies an
+        # item, instead of waiting out the poll interval. `item`/`order` are
+        # pydantic models, not dicts — jsonable_encoder is what makes their
+        # UUID/datetime fields websocket-serializable.
+        await scan.broadcast(
+            jsonable_encoder({"type": "item_update", "kind": "verify", **result.data}),
+            str(order_id), mirror_global=False,
+        )
+    return result
 
 
 @router.post("/{order_id}/items/{item_id}/unavailable", response_model=SuccessResponse)
-def mark_order_item_unavailable(
+async def mark_order_item_unavailable(
     order_id: uuid.UUID,
     item_id: uuid.UUID,
     body: MarkUnavailableRequest,
@@ -77,4 +90,9 @@ def mark_order_item_unavailable(
     user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ) -> SuccessResponse:
-    return order_controller.mark_item_unavailable(order_id, item_id, body, token, user, db)
+    result = order_controller.mark_item_unavailable(order_id, item_id, body, token, user, db)
+    await scan.broadcast(
+        jsonable_encoder({"type": "item_update", "kind": "unavailable", **result.data}),
+        str(order_id), mirror_global=False,
+    )
+    return result

@@ -258,7 +258,25 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  flex-wrap: wrap;
 }
+
+.scan-page .err span { flex: 1; min-width: 180px; }
+
+.scan-page .err-retry-btn {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--danger-border);
+  background: var(--surface);
+  color: var(--danger-strong);
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: background var(--fast) ease;
+}
+
+.scan-page .err-retry-btn:hover { background: var(--danger-bg); }
 
 .section-label {
   font-size: 11px;

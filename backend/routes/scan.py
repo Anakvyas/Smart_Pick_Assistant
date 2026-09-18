@@ -5,6 +5,10 @@ the route wiring and the websocket connection lifecycles (accept, receive,
 send, disconnect) — state that's inherently about the connection itself,
 not something a stateless controller function should carry.
 """
+from __future__ import annotations  # for `str | None` below, on Python 3.9
+
+from collections import defaultdict
+
 from fastapi import APIRouter, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
@@ -14,21 +18,30 @@ from utils import decode_image
 router = APIRouter()
 
 # ------------------------------------------------------------------ display fan-out
-displays = set()
+# Keyed by order id; None is the original global channel (Scan.jsx /
+# Display.jsx) that every order-scoped *scan frame* also mirrors into, so
+# that standalone debug page keeps seeing everything instead of losing
+# traffic to whichever order it happened to belong to. Display.jsx's own
+# message handler only knows how to render a raw scan-frame result — an
+# item_update (see routes/orders.py) has a different shape entirely, so
+# those are never mirrored to the global channel (mirror_global=False).
+displays: dict[str | None, set[WebSocket]] = defaultdict(set)
 
 
-async def broadcast(msg):
-    # Snapshot: `displays` can change while we await a slow client.
-    for ws in list(displays):
-        try:
-            await ws.send_json(msg)
-        except Exception:
-            displays.discard(ws)
+async def broadcast(msg, order_id: str | None = None, mirror_global: bool = True):
+    # Snapshot: `displays[key]` can change while we await a slow client.
+    keys = (None,) if order_id is None else ((order_id, None) if mirror_global else (order_id,))
+    for key in keys:
+        for ws in list(displays.get(key, ())):
+            try:
+                await ws.send_json(msg)
+            except Exception:
+                displays[key].discard(ws)
 
 
 @router.get("/health")
 def health():
-    return JSONResponse({"ok": True, "displays": len(displays)})
+    return JSONResponse({"ok": True, "displays": sum(len(s) for s in displays.values())})
 
 
 @router.post("/api/analyze")
@@ -36,21 +49,29 @@ async def analyze(file: UploadFile = File(...)):
     return await scan_controller.analyze_photo(file)
 
 
-@router.websocket("/ws/display")
-async def ws_display(ws: WebSocket):
+async def _display_loop(ws: WebSocket, order_id: str | None):
     await ws.accept()
-    displays.add(ws)
+    displays[order_id].add(ws)
     try:
         while True:
             await ws.receive_text()   # keepalive
     except Exception:
         pass
     finally:
-        displays.discard(ws)          # also runs on non-disconnect errors
+        displays[order_id].discard(ws)   # also runs on non-disconnect errors
 
 
-@router.websocket("/ws/scan")
-async def ws_scan(ws: WebSocket):
+@router.websocket("/ws/display")
+async def ws_display(ws: WebSocket):
+    await _display_loop(ws, None)
+
+
+@router.websocket("/ws/display/{order_id}")
+async def ws_display_order(ws: WebSocket, order_id: str):
+    await _display_loop(ws, order_id)
+
+
+async def _scan_loop(ws: WebSocket, order_id: str | None):
     await ws.accept()
     # Per-connection only (not global) — one phone holding steady on a
     # product shouldn't reuse a result some other phone found, and a fresh
@@ -69,7 +90,7 @@ async def ws_scan(ws: WebSocket):
                 img = decode_image(jpg)
                 if img is None:
                     raise ValueError("couldn't read that as an image file")
-                want_image = bool(displays)
+                want_image = bool(displays.get(order_id)) or bool(displays.get(None))
                 result, last_sig, last_result = await scan_controller.process_frame(
                     jpg, img, want_image, last_sig, last_result)
             except Exception as e:
@@ -80,8 +101,18 @@ async def ws_scan(ws: WebSocket):
             # back up its own uplink was pure waste and added latency.
             phone_msg = {k: v for k, v in result.items() if k != "image"}
             await ws.send_json(phone_msg)
-            await broadcast(result)
+            await broadcast(result, order_id)
     except WebSocketDisconnect:
         pass
     except Exception as e:
         print("scan socket closed:", type(e).__name__, e)
+
+
+@router.websocket("/ws/scan")
+async def ws_scan(ws: WebSocket):
+    await _scan_loop(ws, None)
+
+
+@router.websocket("/ws/scan/{order_id}")
+async def ws_scan_order(ws: WebSocket, order_id: str):
+    await _scan_loop(ws, order_id)

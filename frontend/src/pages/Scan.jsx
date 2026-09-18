@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSocket } from '../hooks/useSocket'
-import { httpUrl } from '../config'
+import { analyzePhoto } from '../api/scanApi'
 import { isTrustworthyRead, mergeFrame } from '../lib/scanAggregation'
 import ResultPanel from '../components/ResultPanel'
 import AuthStatus from '../components/AuthStatus'
@@ -25,6 +25,10 @@ export default function Scan() {
   const mergeRef = useRef(null)
 
   const [cameraError, setCameraError] = useState(null)
+  // Lets "Try again" force a full restart of the camera effect (new
+  // stream, new watchdog) without reloading the whole page — see the
+  // camera-setup effect below.
+  const [cameraKey, setCameraKey] = useState(0)
   const [latency, setLatency] = useState('—')
   const [count, setCount] = useState('no barcode')
   const [phase, setPhase] = useState('idle') // idle | predicting | live | error: ...
@@ -129,6 +133,7 @@ export default function Scan() {
     let cancelled = false
 
     async function start() {
+      setCameraError(null)
       if (!navigator.mediaDevices?.getUserMedia) {
         setCameraError(
           'Camera unavailable. Browsers only expose the camera on HTTPS or ' +
@@ -173,11 +178,25 @@ export default function Scan() {
       }
     }
     start()
+
+    // Watchdog: getUserMedia can resolve with a live stream that never
+    // actually produces a frame (stuck autoplay policy, driver quirk) —
+    // videoWidth stays 0 forever with no error ever thrown, so nothing
+    // above would set cameraError. Without this, that's a blank stage with
+    // no way to recover short of reloading the whole page. See
+    // ScanDialog.jsx's identical watchdog.
+    const watchdog = setTimeout(() => {
+      if (!cancelled && !videoRef.current?.videoWidth) {
+        setCameraError("Camera didn't start. Tap Try again — if that doesn't help, check that no other app or tab is using the camera.")
+      }
+    }, 8000)
+
     return () => {
       cancelled = true
+      clearTimeout(watchdog)
       stream?.getTracks().forEach((t) => t.stop())
     }
-  }, [])
+  }, [cameraKey])
 
   // Overlay draw loop, independent of inference so it stays smooth.
   useEffect(() => {
@@ -226,14 +245,7 @@ export default function Scan() {
 
     setUpload({ status: 'loading', previewUrl: URL.createObjectURL(file), result: null, error: null })
 
-    const form = new FormData()
-    form.append('file', file)
-
-    fetch(httpUrl('/api/analyze'), { method: 'POST', body: form })
-      .then((res) => {
-        if (!res.ok) throw new Error(`server returned ${res.status}`)
-        return res.json()
-      })
+    analyzePhoto(file)
       .then((result) => setUpload((u) => ({ ...u, status: 'done', result })))
       .catch((err) => setUpload((u) => ({ ...u, status: 'error', error: err.message })))
   }
@@ -300,7 +312,10 @@ export default function Scan() {
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
+        // No `capture` attribute — on many mobile browsers (iOS Safari
+        // especially) it skips the native camera/photo-library/files
+        // chooser and launches the camera app directly, so "Upload photo"
+        // could never actually pick an existing photo from the gallery.
         onChange={onUploadFile}
         hidden
       />
@@ -309,7 +324,10 @@ export default function Scan() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
             <circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" />
           </svg>
-          {cameraError}
+          <span>{cameraError}</span>
+          <button type="button" className="err-retry-btn" onClick={() => setCameraKey((k) => k + 1)}>
+            Try again
+          </button>
         </div>
       )}
 

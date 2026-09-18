@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ResultPanel from '../components/ResultPanel'
+import BackgroundDecor from '../components/BackgroundDecor'
 import { httpUrl } from '../config'
 import './Demo.css'
 
@@ -26,6 +27,7 @@ export default function Demo() {
 
   return (
     <div className="demo-page">
+      <BackgroundDecor />
       <header className="app-header">
         <div className="brand">
           <span className="brand-dot" />

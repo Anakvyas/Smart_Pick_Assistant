@@ -107,7 +107,14 @@
 .scan-dialog-body {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
+  /* .scan-dialog clips at a fixed max-height for its rounded corners — on
+     a real phone's shorter viewport this body (video stage + live result +
+     raw JSON) is routinely taller than that, so it needs its own scroll or
+     the ancestor's overflow:hidden silently clips content with no way to
+     reach it, not just visually truncates it. */
+  overflow-y: auto;
 }
 
 .scan-stage {
@@ -349,6 +356,14 @@
   padding: var(--sp-8) var(--sp-5) var(--sp-6);
   gap: 6px;
   animation: fade-slide-up var(--base) var(--ease) both;
+  flex: 1;
+  min-height: 0;
+  /* Same fix as .scan-dialog-body: the "Verified"/"Not Verified" screens
+     stack an icon, heading, full ResultPanel and action buttons — on a
+     short phone viewport that's easily taller than the dialog's fixed
+     max-height, and without its own scroll the action button (the whole
+     point of this screen) can end up clipped below the fold. */
+  overflow-y: auto;
 }
 
 .outcome-icon {
@@ -450,6 +465,13 @@
   left: 0;
   right: 0;
   bottom: 0;
+  /* .scan-stage clips overlays to the video frame's bounds — this banner's
+     content (reason text + expected/detected row + buttons) can be taller
+     than that on a narrow phone screen, so it gets its own scroll and a
+     cap short of the full stage height rather than risk the action
+     buttons being clipped off with no way to reach them. */
+  max-height: 85%;
+  overflow-y: auto;
   padding: var(--sp-3);
   background: rgba(18, 8, 8, 0.88);
   backdrop-filter: blur(8px);
@@ -481,6 +503,13 @@
 
 .mismatch-banner .evd-label { color: rgba(255, 255, 255, 0.55); }
 .mismatch-banner .evd-value { color: #fff; font-size: 12.5px; }
+
+.mismatch-reason {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.75);
+}
 
 .mismatch-actions {
   display: flex;

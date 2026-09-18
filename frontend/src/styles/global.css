@@ -5,6 +5,8 @@
 */
 
 .auth-shell {
+  position: relative;
+  overflow: hidden;
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -16,6 +18,8 @@
 }
 
 .auth-card {
+  position: relative;
+  z-index: 1;
   width: min(100%, 420px);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -277,12 +281,18 @@
 
 /* --------------------------------------------------------- dashboard --- */
 .dashboard-shell {
+  position: relative;
   min-height: 100vh;
   background: var(--bg);
   padding: var(--sp-5) var(--sp-4) 48px;
+  /* Anchors BackgroundDecor's position:absolute layer (see that component)
+     to this shell rather than the nearest other positioned ancestor. */
+  overflow: hidden;
 }
 
 .dashboard-header {
+  position: relative;
+  z-index: 1;
   max-width: 560px;
   margin: 0 auto;
   display: flex;
@@ -330,6 +340,8 @@
 .logout-button:hover { color: var(--danger-strong); border-color: var(--danger-border); background: var(--danger-bg); }
 
 .dashboard-content {
+  position: relative;
+  z-index: 1;
   max-width: 560px;
   margin: 0 auto;
   display: flex;
