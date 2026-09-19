@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from config import STRICT_LABEL_VERIFICATION
 from core.security import create_scan_token, decode_scan_token
 from exceptions.app_exceptions import AuthRequiredError, OrderItemNotFoundError, OrderNotFoundError
 from models.order_item import OrderItem
@@ -113,6 +114,10 @@ def _find_match(items: list[OrderItem], req: ScanVerifyRequest) -> tuple[OrderIt
             # corroborate that *same* item before it counts as verified;
             # a bare barcode with no name (or a name that points somewhere
             # else) is rejected rather than trusted on the barcode alone.
+            # STRICT_LABEL_VERIFICATION=False skips that corroboration and
+            # trusts the barcode by itself (see config.py).
+            if not STRICT_LABEL_VERIFICATION:
+                return barcode_hit, None
             if req.name and _name_matches(barcode_hit, req.name):
                 return barcode_hit, None
             if req.name:
