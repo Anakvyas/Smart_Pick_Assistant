@@ -11,4 +11,5 @@ class ScanVerifyRequest(BaseModel):
     """
 
     barcode: str | None = None
+    gstin: str | None = None
     name: str | None = None

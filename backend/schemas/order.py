@@ -14,5 +14,8 @@ class OrderPublic(BaseModel):
     picked_count: int
     assigned_at: datetime
     completed_at: Optional[datetime] = None
+    # None = following config.STRICT_LABEL_VERIFICATION; True/False = this
+    # order overrides that default (see models/order.py).
+    strict_label_verification: Optional[bool] = None
 
     model_config = {"from_attributes": True}

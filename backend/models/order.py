@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import ForeignKey, Integer, String, Uuid, func
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import DateTime
 
@@ -29,3 +29,10 @@ class Order(Base):
     # plain eval() that doesn't understand the `|` union syntax on this
     # project's Python 3.9).
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # None (default) = follow config.STRICT_LABEL_VERIFICATION; True/False
+    # overrides that global default for just this order — set from the admin
+    # order builder so a barcode-only order (no labels expected) doesn't
+    # have to flip the env var for everyone. See _effective_strict_label in
+    # controllers/order_controller.py for how the two combine.
+    strict_label_verification: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)

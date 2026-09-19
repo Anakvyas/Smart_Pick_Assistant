@@ -92,48 +92,116 @@ def _name_matches(item: OrderItem, name: str | None) -> bool:
     return bool(a) and bool(b) and (a in b or b in a)
 
 
-def _find_match(items: list[OrderItem], req: ScanVerifyRequest) -> tuple[OrderItem | None, str | None]:
+def _effective_strict_label(order) -> bool:
+    """Order.strict_label_verification overrides config.STRICT_LABEL_VERIFICATION
+    when set (see models/order.py); None means "use the global default".
+    """
+    return STRICT_LABEL_VERIFICATION if order.strict_label_verification is None else order.strict_label_verification
+
+
+def _code_matches(item: OrderItem, req: ScanVerifyRequest) -> bool:
+    """A barcode-scanner read (req.barcode) and the label's OCR-read GSTIN
+    (req.gstin) aren't the same kind of number, but either one landing on
+    either of the item's own barcode or gstin is equally good evidence of
+    which physical product this is — a barcode misread can still leave a
+    clean GSTIN read, and vice versa.
+    """
+    scanned = {c for c in (req.barcode, req.gstin) if c}
+    expected = {c for c in (item.barcode, item.gstin) if c}
+    return bool(scanned & expected)
+
+
+def _current_expected_item(items: list[OrderItem]) -> OrderItem | None:
+    """The one item a scan is actually checked against — line-wise, not
+    "any pending item on the order": the lowest-position item still
+    PENDING, i.e. exactly what the picker's screen is showing as "scan
+    this next". See models/order_item.py's `position` for why that column
+    (not created_at) is what defines the line order.
+    """
+    pending = sorted((i for i in items if i.status == "PENDING"), key=lambda i: i.position)
+    return pending[0] if pending else None
+
+
+def _identifies(item: OrderItem, req: ScanVerifyRequest) -> bool:
+    """Looser than the verification check above — no label corroboration
+    required — used only to name the right product in an "out of order"
+    rejection message, not to decide whether anything actually verifies.
+    A code match is enough on its own; otherwise falls back to name (not
+    an elif — a scanned code that isn't this item's own, e.g. a name-only
+    custom item, shouldn't block recognizing it by label).
+    """
+    if (req.barcode or req.gstin) and _code_matches(item, req):
+        return True
+    return bool(req.name and _name_matches(item, req.name))
+
+
+def _find_match(
+    items: list[OrderItem], req: ScanVerifyRequest, strict_label: bool,
+) -> tuple[OrderItem | None, str | None]:
     """Returns (matched_item_or_None, rejection_reason_or_None) — a reason
     is only ever set alongside None, so callers can tell "no match at all"
-    apart from "matched the barcode but couldn't confirm it" without
-    re-deriving the same checks.
+    apart from "matched the current item's code but couldn't confirm it"
+    without re-deriving the same checks.
+
+    Line-wise: only the current expected item (_current_expected_item) is
+    ever eligible to verify, not just any pending item on the order — a
+    scan of a *later* line, however clean a read it is, doesn't jump the
+    queue. A rejected scan is deliberately not persisted as any kind of
+    item state at all, so the current item stays PENDING and eligible for
+    another attempt right away.
     """
-    # Only items still PENDING are eligible — a scan can never re-match an
-    # item that's already VERIFIED or marked UNAVAILABLE. A *rejected* scan
-    # (no match found here) is deliberately not persisted as any kind of
-    # item state at all — see this function's caller — so the item stays
-    # PENDING and immediately eligible for another attempt.
-    pending = [i for i in items if i.status == "PENDING"]
-    if req.barcode:
-        barcode_hit = next((i for i in pending if i.barcode and i.barcode == req.barcode), None)
-        if barcode_hit:
-            # A barcode match alone is not trusted as proof of the correct
-            # product — a misread, a swapped/adjacent label, or a
-            # relabeled item can all still produce a "correct" barcode read
-            # on the wrong physical item. The scan's own label/name has to
-            # corroborate that *same* item before it counts as verified;
-            # a bare barcode with no name (or a name that points somewhere
-            # else) is rejected rather than trusted on the barcode alone.
-            # STRICT_LABEL_VERIFICATION=False skips that corroboration and
-            # trusts the barcode by itself (see config.py).
-            if not STRICT_LABEL_VERIFICATION:
-                return barcode_hit, None
-            if req.name and _name_matches(barcode_hit, req.name):
-                return barcode_hit, None
-            if req.name:
-                return None, (
-                    f"Barcode matched {barcode_hit.name!r}, but the label read {req.name!r} — "
-                    "that doesn't look like the same product."
-                )
+    current = _current_expected_item(items)
+    if not current:
+        return None, "This order has nothing left to scan."
+
+    if (req.barcode or req.gstin) and _code_matches(current, req):
+        # A code match alone is not trusted as proof of the correct
+        # product — a misread, a swapped/adjacent label, or a relabeled
+        # item can all still produce a "correct" code read on the wrong
+        # physical item. The scan's own label/name has to corroborate it
+        # before it counts as verified; a bare code with no name (or a
+        # name that points somewhere else) is rejected rather than trusted
+        # on the code alone. strict_label=False (global
+        # STRICT_LABEL_VERIFICATION, or this order's own override — see
+        # _effective_strict_label) skips that corroboration and trusts the
+        # barcode/GSTIN by itself.
+        if not strict_label:
+            return current, None
+        if req.name and _name_matches(current, req.name):
+            return current, None
+        if req.name:
             return None, (
-                "Barcode matched, but there's no label/name yet to confirm it's the right "
-                "product — rescan with the name or label visible, not just the barcode."
+                f"Code matched {current.name!r}, but the label read {req.name!r} — "
+                "that doesn't look like the same product."
             )
-    if req.name:
-        by_name = next((i for i in pending if _name_matches(i, req.name)), None)
-        if by_name:
-            return by_name, None
-    return None, "That scan doesn't match any item still pending on this order."
+        return None, (
+            f"Barcode/GSTIN matched {current.name!r}, but there's no label/name yet to "
+            "confirm it — rescan with the name or label visible too."
+        )
+
+    # No code match against *this* item — either nothing was read, or the
+    # scan's barcode/GSTIN simply isn't one current has on file at all
+    # (e.g. a name-only custom item added via the admin builder, which was
+    # always meant to be identified by label alone; see admin_controller.py
+    # / create_order.py). Falls back to a plain name check rather than
+    # treating "a barcode was read" as disqualifying on its own — a real
+    # product's real barcode reading fine doesn't mean anything when the
+    # order line it's being checked against never had one to compare.
+    if req.name and _name_matches(current, req.name):
+        return current, None
+
+    # Doesn't match the current line — but does it match something *else*
+    # still pending further down the order? Worth calling that out by name
+    # rather than a flat "no match", since it's a different failure than a
+    # genuinely unrecognized product: the picker just needs to come back to
+    # it once they've worked through what's ahead of it.
+    other = next(
+        (i for i in items if i.status == "PENDING" and i.id != current.id and _identifies(i, req)),
+        None,
+    )
+    if other:
+        return None, f"Scan {current.name!r} next — that's what this order expects right now, not {other.name!r}."
+    return None, f"That scan doesn't match {current.name!r}, the item this order expects next."
 
 
 def _apply_order_completion(order, items: list[OrderItem]) -> None:
@@ -158,7 +226,7 @@ def verify_scan(
     order = _resolve_order(order_id, token, user, db)
     items = OrderItemRepository(db).list_for_order(order.id)
 
-    match, reason = _find_match(items, req)
+    match, reason = _find_match(items, req, _effective_strict_label(order))
     if not match:
         # Deliberately not written to the database — a rejected scan is a
         # failed *attempt*, not a state transition (see _find_match). The
