@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { ordersApi } from '../api/ordersApi';
 import ScanDialog from '../components/ScanDialog';
 import OrderWatchDialog from '../components/OrderWatchDialog';
+import OrderDetailsDialog from '../components/OrderDetailsDialog';
 import BackgroundDecor from '../components/BackgroundDecor';
 
 function getInitials(name) {
@@ -26,9 +27,10 @@ function formatTime(iso) {
   }
 }
 
-function OrderCard({ order, onScan, onWatch }) {
+function OrderCard({ order, onScan, onWatch, onViewDetails }) {
   const meta = STATUS_META[order.status] || { label: order.status, variant: 'neutral' };
   const pct = order.unit_count > 0 ? Math.round((order.picked_count / order.unit_count) * 100) : 0;
+  const isCompleted = order.status === 'COMPLETED';
 
   return (
     <div className="order-card">
@@ -65,12 +67,11 @@ function OrderCard({ order, onScan, onWatch }) {
       <button
         type="button"
         className="secondary-button"
-        disabled={order.status === 'COMPLETED'}
-        onClick={() => onScan(order)}
+        onClick={() => (isCompleted ? onViewDetails(order) : onScan(order))}
       >
-        {order.status === 'COMPLETED' ? 'View details' : 'Scan to pick'}
+        {isCompleted ? 'View details' : 'Scan to pick'}
       </button>
-      {order.status !== 'COMPLETED' && (
+      {!isCompleted && (
         <button type="button" className="watch-link-button" onClick={() => onWatch(order)}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
@@ -104,6 +105,10 @@ function DashboardPage() {
   // different device, via the QR + live watch view.
   const [scanningOrder, setScanningOrder] = useState(null);
   const [watchingOrder, setWatchingOrder] = useState(null);
+  // A completed order has nothing left to scan — "View details" opens a
+  // read-only summary (every item's final state, time to complete) instead
+  // of the camera scanner.
+  const [viewingDetailsOrder, setViewingDetailsOrder] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -197,10 +202,23 @@ function DashboardPage() {
           )}
 
           {state.status === 'done' && state.orders.map((order) => (
-            <OrderCard key={order.id} order={order} onScan={setScanningOrder} onWatch={setWatchingOrder} />
+            <OrderCard
+              key={order.id}
+              order={order}
+              onScan={setScanningOrder}
+              onWatch={setWatchingOrder}
+              onViewDetails={setViewingDetailsOrder}
+            />
           ))}
         </div>
       </section>
+
+      {viewingDetailsOrder && (
+        <OrderDetailsDialog
+          order={viewingDetailsOrder}
+          onClose={() => setViewingDetailsOrder(null)}
+        />
+      )}
 
       {scanningOrder && (
         <ScanDialog

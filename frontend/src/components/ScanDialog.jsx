@@ -54,6 +54,21 @@ function findMatchForScan(items, scan, pendingOnly) {
   return null
 }
 
+// Plain-language status for what's been read so far this hold, in place of
+// showing raw OCR fields/JSON on a phone screen — that's small, technical,
+// and not what a picker mid-scan needs. The full structured breakdown and
+// raw JSON still show on the PC (OrderWatchDialog's debug panel), which is
+// where that level of detail is actually useful.
+function liveStatusMessage(r) {
+  if (!r) return null
+  const hasBarcode = !!(r.barcode || (r.codes && r.codes.length))
+  const hasLabel = !!r.name
+  if (hasBarcode && hasLabel) return { text: 'Label and barcode matched — checking…', tone: 'success' }
+  if (hasBarcode && !hasLabel) return { text: "Barcode found — can't confirm without the label yet", tone: 'pending' }
+  if (!hasBarcode && hasLabel) return { text: 'Label found — no barcode yet, hold steady', tone: 'pending' }
+  return null
+}
+
 /**
  * Phone-side camera scanner for one order — this device's own camera only
  * (see OrderWatchDialog for the PC-side QR + live-results "window", which
@@ -78,7 +93,7 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
   const lastResultAtRef = useRef(0)
   const inflightRef = useRef(false)
   const sendRef = useRef(() => false)
-  const pumpRef = useRef(() => {})
+  const pumpRef = useRef(() => { })
   const holdTimerRef = useRef(null)
   const stageRef = useRef('loading')
   const mergeRef = useRef(null)
@@ -110,11 +125,6 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
   // scanning keeps running the whole time, so a wrong item never stops the
   // picker from continuing, retrying, or falling back to a photo upload.
   const [mismatch, setMismatch] = useState(null) // { detected }
-  // The raw payload of the most recent frame the backend returned, valid or
-  // not — a "See OCR result" panel reads straight off this so the picker
-  // (or whoever's debugging with them) can see exactly what the model is
-  // producing, independent of whether it was trustworthy enough to act on.
-  const [lastRawFrame, setLastRawFrame] = useState(null)
   // Mirrors mergeRef.current for rendering — the full accumulated field set
   // (name, weight, MRP, expiry, company, batch, GSTIN…) shown live below
   // the camera as it fills in, not just the tiny barcode-kind label drawn
@@ -278,7 +288,6 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
 
     boxesRef.current = r.codes || []
     lastResultAtRef.current = performance.now()
-    setLastRawFrame(r)
     const isNoProduct = r.product_detected === false || r.hint_kind === 'no_product'
     setHint(isNoProduct ? null : r.hint || null)
     setNoProduct(isNoProduct)
@@ -584,7 +593,6 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
     setUpload({ status: 'loading', error: null })
     analyzePhoto(capturedPhoto.blob, 'pick.jpg', order.id)
       .then((r) => {
-        setLastRawFrame(r)
         if (r.valid && isTrustworthyRead(r)) {
           setUpload({ status: 'idle', error: null })
           setMismatch(null)
@@ -599,13 +607,20 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
   }, [capturedPhoto, order.id, verifyScanned, showQuickNote, retakePhoto])
 
   const isLive = status === 'open'
+  // A small text status, not a screen-covering overlay — "starting
+  // camera…" here just means the socket's live but nothing's round-
+  // tripped through the backend yet (stage hasn't reached 'scanning'),
+  // shown the same unobtrusive way "connecting…"/"live" already are so it
+  // never blocks the camera preview underneath it.
   const statusText = status !== 'open'
     ? (status === 'connecting' ? 'connecting…' : 'reconnecting…')
-    : stage === 'checking' ? 'verifying…' : 'live'
+    : stage === 'starting' ? 'starting camera…'
+      : stage === 'checking' ? 'verifying…' : 'live'
 
   const nextTarget = firstPending(items)
   const resolvedCount = countResolved(items)
   const unavailableCount = items.filter((i) => i.status === 'UNAVAILABLE').length
+  const liveMessage = liveStatusMessage(liveResult)
 
   return (
     <div className="scan-dialog-backdrop" role="dialog" aria-modal="true" aria-label={`Scan for order ${order.order_number}`}>
@@ -672,30 +687,24 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
 
               {quickNote && stage === 'scanning' && <div className="quick-note">{quickNote}</div>}
 
+              {/* Small badge directly on the live video, not a screen-
+                  covering overlay (that was the earlier regression — see
+                  git history) — same slot/size as .scan-hint/.quick-note
+                  below, just green and only for this one moment: socket's
+                  live, camera's live, nothing's round-tripped the backend
+                  yet. Disappears the instant the first frame comes back. */}
+              {stage === 'starting' && !cameraError && (
+                <div className="camera-starting-badge">
+                  <span className="camera-starting-dot" />
+                  Starting camera…
+                </div>
+              )}
+
               {stage === 'loading' && (
                 <div className="verifying-overlay">
                   <div className="verifying-badge">
                     <span className="spinner brand" aria-hidden="true" />
                     Loading order…
-                  </div>
-                </div>
-              )}
-
-              {/* Without this, the gap between "camera permission granted"
-                  and "the first live frame actually round-tripped through
-                  the server" showed nothing at all — just whatever the raw
-                  <video> happened to display (often a blank/black box on a
-                  slow phone or a slow first connection). That read as
-                  "broken," and a page refresh was the only recovery a
-                  picker could think to try — even though the camera/socket
-                  were often still fine and just needed a few more seconds.
-                  This turns that silent gap into an explicit, reassuring
-                  state instead of nothing. */}
-              {stage === 'starting' && !cameraError && (
-                <div className="verifying-overlay">
-                  <div className="verifying-badge">
-                    <span className="spinner brand" aria-hidden="true" />
-                    Starting camera…
                   </div>
                 </div>
               )}
@@ -747,21 +756,48 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
                   </div>
                   <div className="expected-vs-detected compact">
                     <div className="evd-col">
-                      <span className="evd-label">Expected</span>
-                      <span className="evd-value">{nextTarget ? nextTarget.name : '—'}</span>
+                      <div className="evd-label">Expected</div>
+
+                      <div className="evd-value">
+                        {nextTarget ? nextTarget.name : '—'}
+                      </div>
                     </div>
-                    <div className="evd-arrow" aria-hidden="true">≠</div>
+
+                    <div className="evd-arrow" aria-hidden="true">
+                      ≠
+                    </div>
+
                     <div className="evd-col">
-                      <span className="evd-label">Detected</span>
-                      <span className="evd-value">
-                        {mismatch.detected?.name || mismatch.detected?.codes?.[0]?.value || 'Unknown'}
-                      </span>
+                      <div className="evd-label">Detected</div>
+
+                      <div className="evd-value">
+                        {mismatch.detected?.name ||
+                          mismatch.detected?.codes?.[0]?.value ||
+                          'Unknown'}
+                      </div>
                     </div>
                   </div>
-                  {mismatch.reason && <p className="mismatch-reason">{mismatch.reason}</p>}
+
+                  {mismatch.reason && (
+                    <p className="mismatch-reason">
+                      {mismatch.reason}
+                    </p>
+                  )}
+
                   <div className="mismatch-actions">
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={rescan}>Rescan</button>
-                    <button type="button" className="btn btn-primary btn-sm" onClick={() => cameraInputRef.current?.click()}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={rescan}
+                    >
+                      Rescan
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => cameraInputRef.current?.click()}
+                    >
                       Take photo
                     </button>
                   </div>
@@ -902,25 +938,14 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
             )}
 
             {!mismatch && (
-              <div className="live-result-section">
-                <div className="section-label">Live result</div>
-                <ResultPanel
-                  result={liveResult}
-                  placeholder="Point the camera at a product's barcode or label to see extracted fields here"
-                />
+              <div className={`live-status-message${liveMessage ? ` ${liveMessage.tone}` : ' idle'}`}>
+                {liveMessage ? liveMessage.text : "Point the camera at a product's barcode or label"}
               </div>
             )}
 
             {upload.status === 'error' && (
               <p className="outcome-error upload-inline-error">Couldn't analyze that photo: {upload.error}</p>
             )}
-
-            <details className="ocr-json-section" open>
-              <summary>OCR result (live JSON)</summary>
-              <pre className="raw-json">
-                {lastRawFrame ? JSON.stringify(lastRawFrame, null, 2) : 'No frame processed yet.'}
-              </pre>
-            </details>
           </div>
         )}
 
