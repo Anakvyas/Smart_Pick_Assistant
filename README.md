@@ -36,10 +36,9 @@ frame or a single upload, it goes through the exact same steps
  1. Camera / photo upload
         │
         ▼
- 2. (optional) "Is there even a product in this frame?"
+ 2.  "Is there even a product in this frame?"
         A small YOLO model checks for an empty shelf and skips the
-        expensive steps below if there's nothing there. Off by default
-        locally (needs a model file most setups won't have — see below).
+        expensive steps below if there's nothing there.
         │
         ▼
  3. Barcode decode  (zxing-cpp)
