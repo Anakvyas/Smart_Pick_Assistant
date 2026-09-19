@@ -57,7 +57,7 @@ app.add_middleware(
     # Without this, either one silently breaks every fetch with no error
     # message beyond "the backend isn't responding".
     allow_origin_regex=None if settings.is_production else (
-        r"https://.*\.ngrok(-free)?\.app"
+        r"https://.*\.ngrok(-free)?\.(app|dev)"
         r"|https://.*\.ngrok\.io"
         r"|http://(192\.168|10\.\d{1,3}|172\.(1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}(:\d+)?"
     ),

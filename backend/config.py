@@ -58,6 +58,15 @@ EMPTY_CONF_THRESHOLD = 0.60     # empty score must clear this AND product miss a
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/v1/chat/completions")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b-instruct")
 
+# ------------------------------------------------------ scan verification --
+# True (default): a scanned barcode must also be corroborated by a matching
+# label/name before an order item counts as verified (see _find_match in
+# order_controller.py) — guards against a misread or a swapped/relabeled
+# item still producing a "correct" barcode on the wrong product.
+# False: barcode alone is trusted — if it matches a pending item's barcode,
+# that item is verified without needing the label/name to also match.
+STRICT_LABEL_VERIFICATION = os.environ.get("STRICT_LABEL_VERIFICATION", "true").lower() == "true"
+
 # Bounds worst-case call volume during live scanning (many frames a minute
 # can each miss regex) without reintroducing per-connection state — a single
 # global cooldown, checked right before every call. Less critical than it

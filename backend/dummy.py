@@ -28,6 +28,7 @@ needed.
 import json
 import os
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from core.security import hash_password
 from db.base import Base
@@ -44,15 +45,28 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(HERE, "demo", "products.json")) as f:
     _CATALOG = {p["id"]: p for p in json.load(f)}
 
+_NOW = datetime.now(timezone.utc)
 
-def _line(product_id, qty=1, verified=0):
+
+def _ago(minutes):
+    return _NOW - timedelta(minutes=minutes)
+
+
+def _line(product_id, qty=1, verified=0, verified_minutes_ago=None):
     p = _CATALOG[product_id]
-    return dict(name=p["name"], barcode=p["barcode"], quantity_expected=qty, quantity_verified=verified)
+    line = dict(name=p["name"], barcode=p["barcode"], quantity_expected=qty, quantity_verified=verified)
+    # Only meaningful once verified >= qty (see seed_orders, which is what
+    # actually decides VERIFIED vs PENDING) — a picked-but-not-yet-complete
+    # line has no single "verified at" moment.
+    if verified_minutes_ago is not None:
+        line["verified_at"] = _ago(verified_minutes_ago)
+    return line
 
 
 DUMMY_ORDERS = [
     dict(
-        order=dict(order_number="ORD-1001", status="IN_PROGRESS", product_count=3, unit_count=4, picked_count=1),
+        order=dict(order_number="ORD-1001", status="IN_PROGRESS", product_count=3, unit_count=4, picked_count=1,
+                    assigned_at=_ago(35)),
         items=[
             _line("instant-noodles", qty=2, verified=1),
             _line("amul-milk-500ml", qty=1),
@@ -60,7 +74,8 @@ DUMMY_ORDERS = [
         ],
     ),
     dict(
-        order=dict(order_number="ORD-1002", status="ASSIGNED", product_count=5, unit_count=8, picked_count=0),
+        order=dict(order_number="ORD-1002", status="ASSIGNED", product_count=5, unit_count=8, picked_count=0,
+                    assigned_at=_ago(8)),
         items=[
             _line("happilo-snack", qty=2),
             _line("face-tissues", qty=2),
@@ -69,11 +84,15 @@ DUMMY_ORDERS = [
             _line("amul-milk-500ml", qty=1),
         ],
     ),
+    # Times set explicitly (not just "now") so View Details on the
+    # dashboard has a real, non-zero "time to complete" to show —
+    # assigned 42 minutes ago, completed 24 minutes ago: an 18-minute pick.
     dict(
-        order=dict(order_number="ORD-1003", status="COMPLETED", product_count=2, unit_count=2, picked_count=2),
+        order=dict(order_number="ORD-1003", status="COMPLETED", product_count=2, unit_count=2, picked_count=2,
+                    assigned_at=_ago(42), completed_at=_ago(24)),
         items=[
-            _line("instant-noodles", qty=1, verified=1),
-            _line("exercise-book", qty=1, verified=1),
+            _line("instant-noodles", qty=1, verified=1, verified_minutes_ago=31),
+            _line("exercise-book", qty=1, verified=1, verified_minutes_ago=24),
         ],
     ),
     # A "one of everything" cart, all still PENDING — for testing scan/QR/
