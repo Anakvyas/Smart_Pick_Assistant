@@ -19,6 +19,21 @@
   --brand-100: #e7ecfb;
   --brand-50:  #f3f6fd;
 
+<<<<<<< HEAD
+  /* ---- cool secondary accent (teal) ---- */
+  /* One second color, not a rainbow: sits next to the indigo brand on the
+     cool side of the wheel, so icon/highlight variety reads as "considered
+     palette" rather than "every icon got a random color". Used sparingly —
+     a category of icons or a secondary highlight, never competing with the
+     brand color for primary-action attention. */
+  --accent-700: #0b6e6a;
+  --accent-600: #0e8a84;
+  --accent-500: #14a89f;
+  --accent-100: #d7f3f0;
+  --accent-50:  #eefbfa;
+
+=======
+>>>>>>> origin/main
   /* ---- semantic status ---- */
   --success: #0f9d63;
   --success-strong: #0b7a4d;
@@ -40,7 +55,11 @@
   --neutral-border: #e2e4e9;
 
   /* ---- surfaces & text ---- */
+<<<<<<< HEAD
+  --bg: #f5f7fc;
+=======
   --bg: #f6f7fb;
+>>>>>>> origin/main
   --surface: #ffffff;
   --surface-alt: #fafbfd;
   --text: #12162b;
@@ -49,6 +68,20 @@
   --border: #e6e8ef;
   --border-strong: #d6d9e3;
 
+<<<<<<< HEAD
+  /* Shared atmospheric wash — a soft cool blend of the brand indigo and
+     the teal accent fading into --bg, instead of a flat color everywhere.
+     One gradient definition so every full-page shell (dashboard, admin,
+     auth, display, scan) reads as the same "place", not visually distinct
+     screens that happen to share a button style. Fixed for parallax-y
+     depth without moving on scroll. */
+  --bg-wash:
+    radial-gradient(120% 60% at 12% -10%, var(--brand-100) 0%, transparent 55%),
+    radial-gradient(100% 55% at 100% 0%, var(--accent-100) 0%, transparent 50%),
+    var(--bg);
+
+=======
+>>>>>>> origin/main
   /* ---- elevation ---- */
   --shadow-xs: 0 1px 2px rgba(16, 24, 60, 0.04);
   --shadow-sm: 0 2px 8px rgba(16, 24, 60, 0.06);
@@ -94,7 +127,12 @@ html {
 body {
   margin: 0;
   font-family: var(--font-body);
+<<<<<<< HEAD
+  background: var(--bg-wash);
+  background-attachment: fixed;
+=======
   background: var(--bg);
+>>>>>>> origin/main
   color: var(--text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -173,6 +211,18 @@ a:focus-visible,
   flex-shrink: 0;
 }
 
+<<<<<<< HEAD
+/* Small inline icon accents — most icons on the site sit inside muted body
+   text and inherit its color on purpose (an icon next to "3 units" isn't
+   more important than the text). These two are for the handful that
+   benefit from standing out a little: a time/status glance (accent teal)
+   or a brand-owned action (brand indigo), applied selectively rather than
+   coloring every icon in the app. */
+.icon-accent { color: var(--accent-600); }
+.icon-brand { color: var(--brand-500); }
+
+=======
+>>>>>>> origin/main
 .status-pill.success { background: var(--success-bg); color: var(--success-strong); }
 .status-pill.danger  { background: var(--danger-bg);  color: var(--danger-strong); }
 .status-pill.warning { background: var(--warning-bg); color: var(--warning-strong); }

@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react'
+<<<<<<< HEAD
+import { motion } from 'framer-motion'
+=======
+>>>>>>> origin/main
 import { ordersApi } from '../api/ordersApi'
 import './OrderDetailsDialog.css'
 
@@ -83,8 +87,28 @@ export default function OrderDetailsDialog({ order, onClose }) {
   const unavailableCount = state.items.filter((i) => i.status === 'UNAVAILABLE').length
 
   return (
+<<<<<<< HEAD
+    <motion.div
+      className="details-dialog-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Order ${order.order_number} details`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+    >
+      <motion.div
+        className="details-dialog"
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+      >
+=======
     <div className="details-dialog-backdrop" role="dialog" aria-modal="true" aria-label={`Order ${order.order_number} details`}>
       <div className="details-dialog">
+>>>>>>> origin/main
         <header className="details-dialog-header">
           <div className="details-dialog-title">
             <span className="details-dialog-eyebrow">Order</span>
@@ -176,7 +200,12 @@ export default function OrderDetailsDialog({ order, onClose }) {
             </div>
           )}
         </div>
+<<<<<<< HEAD
+      </motion.div>
+    </motion.div>
+=======
       </div>
     </div>
+>>>>>>> origin/main
   )
 }

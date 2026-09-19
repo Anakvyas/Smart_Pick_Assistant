@@ -1,6 +1,11 @@
 .display-page {
   font-family: var(--font-body);
+<<<<<<< HEAD
+  background: var(--bg-wash);
+  background-attachment: fixed;
+=======
   background: var(--bg);
+>>>>>>> origin/main
   color: var(--text);
   display: flex;
   min-height: 100svh;
@@ -16,6 +21,25 @@
   min-width: 0;
 }
 
+<<<<<<< HEAD
+/* This page is built for a PC/kiosk screen watching a live camera feed —
+   the two-column layout (feed + detected-items sidebar) never had a
+   narrow-viewport fallback, so opening it on a phone squeezed `.left` down
+   to a sliver against `.right`'s 320px min-width, overlapping the header
+   text and crushing the QR/upload row. Stack instead of squeeze below the
+   width where that min-width can no longer be honored. */
+@media (max-width: 860px) {
+  .display-page {
+    flex-direction: column;
+  }
+
+  .display-page .right {
+    min-width: 0;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
 .display-page .app-header {
   width: 100%;
   max-width: 760px;
@@ -25,6 +49,17 @@
   justify-content: space-between;
 }
 
+=======
+.display-page .app-header {
+  width: 100%;
+  max-width: 760px;
+  padding: var(--sp-5) var(--sp-1) var(--sp-1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+>>>>>>> origin/main
 .display-page .brand {
   display: flex;
   align-items: center;

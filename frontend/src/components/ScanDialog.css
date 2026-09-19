@@ -8,7 +8,10 @@
   justify-content: center;
   padding: var(--sp-4);
   z-index: 100;
+<<<<<<< HEAD
+=======
   animation: fade-in var(--fast) ease both;
+>>>>>>> origin/main
 }
 
 .scan-dialog {
@@ -20,7 +23,10 @@
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
+<<<<<<< HEAD
+=======
   animation: fade-slide-up var(--base) var(--ease) both;
+>>>>>>> origin/main
 }
 
 .scan-dialog-header {

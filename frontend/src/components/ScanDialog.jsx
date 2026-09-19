@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+<<<<<<< HEAD
+import { motion } from 'framer-motion'
+=======
+>>>>>>> origin/main
 import { useSocket } from '../hooks/useSocket'
 import { ordersApi } from '../api/ordersApi'
 import { analyzePhoto } from '../api/scanApi'
@@ -663,8 +667,28 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
   const liveMessage = liveStatusMessage(liveResult)
 
   return (
+<<<<<<< HEAD
+    <motion.div
+      className="scan-dialog-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Scan for order ${order.order_number}`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+    >
+      <motion.div
+        className="scan-dialog"
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+      >
+=======
     <div className="scan-dialog-backdrop" role="dialog" aria-modal="true" aria-label={`Scan for order ${order.order_number}`}>
       <div className="scan-dialog">
+>>>>>>> origin/main
         <header className="scan-dialog-header">
           <div className="scan-dialog-target">
             <span className="scan-dialog-target-label">
@@ -1027,7 +1051,12 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
             </div>
           </div>
         )}
+<<<<<<< HEAD
+      </motion.div>
+    </motion.div>
+=======
       </div>
     </div>
+>>>>>>> origin/main
   )
 }
