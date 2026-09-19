@@ -2,7 +2,11 @@
   position: relative;
   overflow: hidden;
   min-height: 100svh;
+<<<<<<< HEAD
   background: var(--bg-wash);
+=======
+  background: var(--bg);
+>>>>>>> origin/main
   color: var(--text);
   padding-bottom: var(--sp-8);
 }

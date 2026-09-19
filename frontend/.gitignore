@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Local-only overrides (e.g. VITE_PUBLIC_URL) — the free ngrok tunnel URL
+# changes on every restart, so this is never something to commit.
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

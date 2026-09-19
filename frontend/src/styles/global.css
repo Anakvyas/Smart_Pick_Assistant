@@ -12,7 +12,13 @@
   align-items: center;
   justify-content: center;
   padding: var(--sp-6) var(--sp-4);
+<<<<<<< HEAD
   background: var(--bg-wash);
+=======
+  background:
+    radial-gradient(120% 55% at 50% -12%, var(--brand-100) 0%, transparent 62%),
+    var(--bg);
+>>>>>>> origin/main
 }
 
 .auth-card {
@@ -24,6 +30,10 @@
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
   padding: 38px 26px 28px;
+<<<<<<< HEAD
+=======
+  animation: fade-slide-up var(--slow) var(--ease) both;
+>>>>>>> origin/main
 }
 
 .brand-block {
@@ -280,7 +290,11 @@
 .dashboard-shell {
   position: relative;
   min-height: 100vh;
+<<<<<<< HEAD
   background: var(--bg-wash);
+=======
+  background: var(--bg);
+>>>>>>> origin/main
   padding: var(--sp-5) var(--sp-4) 48px;
   /* Anchors BackgroundDecor's position:absolute layer (see that component)
      to this shell rather than the nearest other positioned ancestor. */
@@ -454,6 +468,10 @@
   border-radius: var(--r-md);
   padding: 16px;
   transition: box-shadow var(--fast) ease, transform var(--fast) ease, border-color var(--fast) ease;
+<<<<<<< HEAD
+=======
+  animation: fade-slide-up var(--base) var(--ease) both;
+>>>>>>> origin/main
 }
 
 .order-card + .order-card { margin-top: 12px; }

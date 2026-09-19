@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
+<<<<<<< HEAD
 import { AnimatePresence, motion } from 'framer-motion';
+=======
+>>>>>>> origin/main
 import { useAuth } from '../context/AuthContext';
 import { ordersApi } from '../api/ordersApi';
 import ScanDialog from '../components/ScanDialog';
@@ -7,6 +10,7 @@ import OrderWatchDialog from '../components/OrderWatchDialog';
 import OrderDetailsDialog from '../components/OrderDetailsDialog';
 import BackgroundDecor from '../components/BackgroundDecor';
 
+<<<<<<< HEAD
 // Cards fade/rise in one after another rather than all at once — cheap to
 // do with framer-motion's staggerChildren, and it's what actually reads as
 // "polished list" versus a static list that happens to have entered.
@@ -16,6 +20,8 @@ const cardVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
 };
 
+=======
+>>>>>>> origin/main
 function getInitials(name) {
   if (!name) return 'P';
   const parts = name.trim().split(/\s+/);
@@ -43,7 +49,11 @@ function OrderCard({ order, onScan, onWatch, onViewDetails }) {
   const isCompleted = order.status === 'COMPLETED';
 
   return (
+<<<<<<< HEAD
     <motion.div className="order-card" variants={cardVariants}>
+=======
+    <div className="order-card">
+>>>>>>> origin/main
       <div className="order-card-head">
         <span className={`status-pill ${meta.variant}`}>
           <span className="dot" />
@@ -53,14 +63,22 @@ function OrderCard({ order, onScan, onWatch, onViewDetails }) {
       <div className="order-body">
         <h3>{order.order_number}</h3>
         <p className="order-meta-line">
+<<<<<<< HEAD
           <svg className="icon-accent" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+=======
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+>>>>>>> origin/main
             <circle cx="12" cy="12" r="9" />
             <path d="M12 7v5l3 3" />
           </svg>
           Assigned: {formatTime(order.assigned_at)}
         </p>
         <p className="order-meta-line">
+<<<<<<< HEAD
           <svg className="icon-brand" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+=======
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+>>>>>>> origin/main
             <path d="M3 7l9-4 9 4-9 4-9-4Z" />
             <path d="M3 7v10l9 4 9-4V7" />
           </svg>
@@ -90,7 +108,11 @@ function OrderCard({ order, onScan, onWatch, onViewDetails }) {
           Scan with another phone instead
         </button>
       )}
+<<<<<<< HEAD
     </motion.div>
+=======
+    </div>
+>>>>>>> origin/main
   );
 }
 
@@ -213,6 +235,7 @@ function DashboardPage() {
             <p className="empty-state">No orders assigned yet — check back soon.</p>
           )}
 
+<<<<<<< HEAD
           {state.status === 'done' && state.orders.length > 0 && (
             <motion.div variants={listVariants} initial="hidden" animate="show">
               {state.orders.map((order) => (
@@ -259,6 +282,44 @@ function DashboardPage() {
           />
         )}
       </AnimatePresence>
+=======
+          {state.status === 'done' && state.orders.map((order) => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              onScan={setScanningOrder}
+              onWatch={setWatchingOrder}
+              onViewDetails={setViewingDetailsOrder}
+            />
+          ))}
+        </div>
+      </section>
+
+      {viewingDetailsOrder && (
+        <OrderDetailsDialog
+          order={viewingDetailsOrder}
+          onClose={() => setViewingDetailsOrder(null)}
+        />
+      )}
+
+      {scanningOrder && (
+        <ScanDialog
+          order={scanningOrder}
+          onClose={() => setScanningOrder(null)}
+          onOrderUpdated={handleOrderUpdated}
+          onShowQR={() => { setWatchingOrder(scanningOrder); setScanningOrder(null); }}
+        />
+      )}
+
+      {watchingOrder && (
+        <OrderWatchDialog
+          order={watchingOrder}
+          onClose={() => setWatchingOrder(null)}
+          onOrderUpdated={handleOrderUpdated}
+          onShowScanner={() => { setScanningOrder(watchingOrder); setWatchingOrder(null); }}
+        />
+      )}
+>>>>>>> origin/main
     </main>
   );
 }

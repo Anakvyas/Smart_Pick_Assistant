@@ -7,7 +7,11 @@
 .admin-shell {
   position: relative;
   min-height: 100vh;
+<<<<<<< HEAD
   background: var(--bg-wash);
+=======
+  background: var(--bg);
+>>>>>>> origin/main
   padding: var(--sp-5) var(--sp-4) 48px;
   overflow: hidden;
 }
@@ -54,7 +58,10 @@
 
 .search-wrap input {
   flex: 1;
+<<<<<<< HEAD
   min-width: 0;
+=======
+>>>>>>> origin/main
   border: none;
   background: transparent;
   color: var(--text);
@@ -156,7 +163,10 @@
 
 .custom-item-row input {
   flex: 1;
+<<<<<<< HEAD
   min-width: 0;
+=======
+>>>>>>> origin/main
   min-height: 38px;
   border: 1.5px dashed var(--border-strong);
   background: transparent;
@@ -198,6 +208,10 @@
   align-items: center;
   gap: 10px;
   padding: 8px 4px;
+<<<<<<< HEAD
+=======
+  animation: fade-slide-up var(--fast) var(--ease) both;
+>>>>>>> origin/main
 }
 
 .cart-line + .cart-line { border-top: 1px solid var(--border); }
@@ -335,6 +349,10 @@
   border-radius: var(--r-sm);
   padding: 10px 12px;
   background: var(--surface-alt);
+<<<<<<< HEAD
+=======
+  animation: fade-slide-up var(--fast) var(--ease) both;
+>>>>>>> origin/main
 }
 
 .admin-order-row-main {
