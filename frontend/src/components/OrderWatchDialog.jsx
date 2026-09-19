@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-<<<<<<< HEAD
 import { motion } from 'framer-motion'
-=======
->>>>>>> origin/main
 import { isLocalOrigin, PUBLIC_URL_OVERRIDE } from '../config'
 import { ordersApi } from '../api/ordersApi'
 import { analyzePhoto } from '../api/scanApi'
@@ -253,7 +250,6 @@ export default function OrderWatchDialog({ order, onClose, onOrderUpdated, onSho
   const nextTarget = firstPending(items)
 
   return (
-<<<<<<< HEAD
     <motion.div
       className="watch-dialog-backdrop"
       role="dialog"
@@ -271,10 +267,6 @@ export default function OrderWatchDialog({ order, onClose, onOrderUpdated, onSho
         exit={{ opacity: 0, y: 10, scale: 0.98 }}
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
       >
-=======
-    <div className="watch-dialog-backdrop" role="dialog" aria-modal="true" aria-label={`Watch order ${order.order_number}`}>
-      <div className="watch-dialog">
->>>>>>> origin/main
         <header className="watch-dialog-header">
           <div className="watch-dialog-title">
             <span className="watch-dialog-eyebrow">Order</span>
@@ -466,12 +458,7 @@ export default function OrderWatchDialog({ order, onClose, onOrderUpdated, onSho
             </div>
           </div>
         )}
-<<<<<<< HEAD
       </motion.div>
     </motion.div>
-=======
-      </div>
-    </div>
->>>>>>> origin/main
   )
 }

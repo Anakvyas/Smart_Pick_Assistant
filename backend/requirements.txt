@@ -17,6 +17,7 @@ alembic>=1.13.0
 pydantic>=2.9.0
 pydantic[email]>=2.9.0
 pydantic-settings>=2.5.0
+eval-type-backport>=0.2.0  # pydantic needs this to evaluate `str | None`-style hints on Python <3.10
 pwdlib[argon2,bcrypt]>=0.2.0
 pyjwt>=2.9.0
 

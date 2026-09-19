@@ -2,6 +2,9 @@
 __pycache__/
 *.pyc
 .env
-./demo
-/demo
+demo/
 smart_picker.db
+myvenv/
+.pytest_cache/
+**/__pycache__/
+*__init__.py

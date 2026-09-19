@@ -1,11 +1,7 @@
 .scan-page {
   min-height: 100svh;
-<<<<<<< HEAD
   background: var(--bg-wash);
   background-attachment: fixed;
-=======
-  background: var(--bg);
->>>>>>> origin/main
   color: var(--text);
   padding-bottom: var(--sp-6);
 }

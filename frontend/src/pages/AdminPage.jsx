@@ -1,15 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-<<<<<<< HEAD
 import { AnimatePresence, motion } from 'framer-motion';
-=======
->>>>>>> origin/main
 import { useAuth } from '../context/AuthContext';
 import { adminApi } from '../api/adminApi';
 import BackgroundDecor from '../components/BackgroundDecor';
 import './AdminPage.css';
 
-<<<<<<< HEAD
 const listVariants = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } };
 const rowVariants = {
   hidden: { opacity: 0, y: 10 },
@@ -21,8 +17,6 @@ const cartLineVariants = {
   exit: { opacity: 0, x: 8, transition: { duration: 0.15 } },
 };
 
-=======
->>>>>>> origin/main
 const STATUS_META = {
   ASSIGNED: { label: 'Assigned', variant: 'neutral' },
   IN_PROGRESS: { label: 'In progress', variant: 'warning' },
@@ -69,7 +63,6 @@ function ProductRow({ product, onAdd }) {
 
 function CartLine({ line, onQuantity, onRemove }) {
   return (
-<<<<<<< HEAD
     <motion.div
       className="cart-line"
       layout
@@ -78,9 +71,6 @@ function CartLine({ line, onQuantity, onRemove }) {
       animate="animate"
       exit="exit"
     >
-=======
-    <div className="cart-line">
->>>>>>> origin/main
       <div className="cart-line-text">
         <p className="cart-line-name">{line.name}</p>
         {!line.product_id && <p className="cart-line-meta">Custom item · matched by label only</p>}
@@ -93,11 +83,7 @@ function CartLine({ line, onQuantity, onRemove }) {
       <button type="button" className="cart-line-remove" onClick={() => onRemove(line.key)} aria-label={`Remove ${line.name}`}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
       </button>
-<<<<<<< HEAD
     </motion.div>
-=======
-    </div>
->>>>>>> origin/main
   );
 }
 
@@ -275,17 +261,11 @@ function AdminPage() {
             >
               <p className="cart-dropzone-label">Cart — drag products here, or use +</p>
               {cart.length === 0 && <p className="empty-state">Nothing added yet.</p>}
-<<<<<<< HEAD
               <AnimatePresence initial={false}>
                 {cart.map((line) => (
                   <CartLine key={line.key} line={line} onQuantity={setQuantity} onRemove={removeLine} />
                 ))}
               </AnimatePresence>
-=======
-              {cart.map((line) => (
-                <CartLine key={line.key} line={line} onQuantity={setQuantity} onRemove={removeLine} />
-              ))}
->>>>>>> origin/main
             </div>
 
             <div className="strict-toggle">
@@ -330,20 +310,12 @@ function AdminPage() {
             {ordersState === 'error' && <p className="empty-state" style={{ color: 'var(--danger-strong)' }}>Could not load orders.</p>}
             {ordersState === 'done' && orders.length === 0 && <p className="empty-state">No orders yet — build one on the left.</p>}
 
-<<<<<<< HEAD
             <motion.div className="admin-order-table" variants={listVariants} initial="hidden" animate="show">
-=======
-            <div className="admin-order-table">
->>>>>>> origin/main
               {ordersState === 'done' && orders.map((order) => {
                 const meta = STATUS_META[order.status] || { label: order.status, variant: 'neutral' };
                 const pct = order.unit_count > 0 ? Math.round((order.picked_count / order.unit_count) * 100) : 0;
                 return (
-<<<<<<< HEAD
                   <motion.div className="admin-order-row" key={order.id} variants={rowVariants} layout>
-=======
-                  <div className="admin-order-row" key={order.id}>
->>>>>>> origin/main
                     <div className="admin-order-row-main">
                       <span className={`status-pill ${meta.variant}`}><span className="dot" />{meta.label}</span>
                       <span className="admin-order-number">{order.order_number}</span>
@@ -355,17 +327,10 @@ function AdminPage() {
                     <div className="order-progress-track">
                       <div className="order-progress-fill" style={{ width: `${pct}%` }} />
                     </div>
-<<<<<<< HEAD
                   </motion.div>
                 );
               })}
             </motion.div>
-=======
-                  </div>
-                );
-              })}
-            </div>
->>>>>>> origin/main
           </div>
         </div>
       </section>
