@@ -1,122 +1,305 @@
 .scan-page {
   min-height: 100svh;
-  background: #0b0d12;
-  color: #eee;
+  background: var(--bg-wash);
+  background-attachment: fixed;
+  color: var(--text);
+  padding-bottom: var(--sp-6);
 }
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  padding: var(--sp-4) var(--sp-4);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.brand-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-bg);
+}
+
+.brand-sub {
+  font-family: var(--font-body);
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.live-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--neutral-bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--r-pill);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background var(--fast) ease, color var(--fast) ease, border-color var(--fast) ease;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.live-pill.on { background: var(--success-bg); color: var(--success-strong); border-color: var(--success-border); }
+.live-pill.on .live-dot { background: var(--success); box-shadow: 0 0 0 3px rgba(15, 157, 99, 0.18); }
 
 .scan-page .stage {
   position: relative;
   width: 100%;
-  background: #000;
+  /* A tall, portrait-shaped box (not the video's natural landscape
+     aspect ratio) — same as the per-order scanner's camera stage. Without
+     this, `width: 100%` alone lets a landscape camera stream (the usual
+     shape from facingMode: environment) render short and cramped on a
+     portrait phone screen instead of filling it. */
+  aspect-ratio: 3 / 4;
+  background: #0b0d12;
   line-height: 0;
+  overflow: hidden;
 }
 
-.scan-page .stage video,
-.scan-page .stage .overlay {
+.scan-page .stage video {
   width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 
 .scan-page .overlay {
   position: absolute;
   inset: 0;
+  width: 100%;
   height: 100%;
 }
 
+/* On a wide enough screen (tablet/desktop testing the phone flow), a 3:4
+   box stretched to full page width would get absurdly tall — cap it so
+   the live view stays a comfortable, centered size instead of dominating
+   the whole viewport. */
+@media (min-width: 640px) {
+  .scan-page .stage {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+}
+
+/* Viewfinder guide — purely decorative corner brackets, the visual
+   language of "point the camera here" every scanning app since barcode
+   scanners on phones started existing uses. Fades away once a real result
+   comes in (see the {!result?.valid && ...} guard in Scan.jsx) so it never
+   competes with the actual barcode/label boxes drawn on the canvas above. */
+.viewfinder {
+  position: absolute;
+  inset: 12% 14%;
+  pointer-events: none;
+  animation: fade-in var(--slow) ease both;
+}
+
+.vf-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+}
+
+.vf-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: var(--r-md); }
+.vf-corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: var(--r-md); }
+.vf-corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: var(--r-md); }
+.vf-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: var(--r-md); }
+
 .scan-page .bar {
   display: flex;
+  flex-wrap: wrap;
+  row-gap: 8px;
   gap: 10px;
   align-items: center;
-  padding: 12px 14px;
+  padding: var(--sp-3) var(--sp-4);
   font-size: 14px;
 }
 
 .scan-page .count {
-  background: #1c6feb;
-  color: #fff;
-  border-radius: 999px;
+  background: var(--brand-50);
+  color: var(--brand-700);
+  border: 1px solid var(--brand-100);
+  border-radius: var(--r-pill);
   padding: 5px 12px;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
 }
 
-.scan-page .lat { color: #8fdf8f; font-variant-numeric: tabular-nums; }
-.scan-page .status { color: #9aa3b2; flex: 1; text-align: right; }
+.scan-page .lat {
+  color: var(--success-strong);
+  font-variant-numeric: tabular-nums;
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 600;
+}
 
 .scan-page .upload-btn {
-  background: #232a38;
-  border: 1px solid #333c4f;
-  color: #ddd;
-  border-radius: 999px;
-  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: var(--shadow-xs);
+  transition: background var(--fast) ease, border-color var(--fast) ease, transform var(--fast) ease;
 }
 
-.scan-page .upload-btn:hover { background: #2c3446; }
+.scan-page .upload-btn:hover { background: var(--brand-50); border-color: var(--brand-400); }
+.scan-page .upload-btn:active { transform: scale(0.97); }
 
 .scan-page .hint {
   display: block;
   position: absolute;
-  top: 12px;
+  top: var(--sp-3);
   left: 50%;
   transform: translateX(-50%);
   max-width: calc(100% - 28px);
   padding: 8px 16px;
-  background: rgba(20, 14, 4, 0.82);
-  border: 1px solid rgba(255, 190, 90, 0.5);
-  color: #ffd479;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 600;
+  background: rgba(30, 22, 4, 0.85);
+  border: 1px solid rgba(217, 143, 10, 0.55);
+  color: #ffd88a;
+  border-radius: var(--r-pill);
+  font-size: 13.5px;
+  font-weight: 700;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  animation: fade-slide-up var(--base) var(--ease) both;
+  backdrop-filter: blur(6px);
 }
 
-.scan-page .hint.empty {
-  background: rgba(58, 20, 20, 0.9);
-  border-color: rgba(255, 90, 90, 0.65);
-  color: #ff6b6b;
-}
-
-.scan-page .fields {
-  display: block;
+/* Big, unmissable banner when the product gate says the frame is empty —
+   distinct from the small coaching-tip pill above, which still handles
+   "too dark"/"hold steady"/etc for frames that DO contain a product. */
+.no-product-overlay {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
-  right: 12px;
-  padding: 8px 12px;
-  background: rgba(10, 14, 20, 0.82);
-  border: 1px solid rgba(127, 176, 255, 0.4);
-  color: #7fb0ff;
-  border-radius: 10px;
-  font-size: 13px;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 6, 6, 0.4);
+  pointer-events: none;
+}
+
+.no-product-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(40, 12, 12, 0.9);
+  border: 1.5px solid rgba(224, 54, 46, 0.55);
+  color: #ff8f89;
+  padding: 20px 30px;
+  border-radius: var(--r-xl);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  animation: no-product-in var(--base) var(--ease);
+}
+
+.no-product-sub {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ffb3ae;
+  letter-spacing: normal;
+}
+
+@keyframes no-product-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .scan-page .err {
-  margin: 14px;
-  padding: 14px;
-  background: #3a1d1d;
-  border: 1px solid #7a3a3a;
-  border-radius: 10px;
+  margin: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-strong);
+  border-radius: var(--r-md);
   font-size: 14px;
   line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scan-page .err span { flex: 1; min-width: 180px; }
+
+.scan-page .err-retry-btn {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--danger-border);
+  background: var(--surface);
+  color: var(--danger-strong);
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: background var(--fast) ease;
+}
+
+.scan-page .err-retry-btn:hover { background: var(--danger-bg); }
+
+.section-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  margin: var(--sp-1) var(--sp-4) var(--sp-2);
+}
+
+.live-result {
+  margin: var(--sp-3) var(--sp-4) 0;
 }
 
 .scan-page .upload-panel {
-  margin: 0 14px 16px;
-  background: #161922;
-  border: 1px solid #242938;
-  border-radius: 10px;
+  margin: var(--sp-5) var(--sp-4) 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
   overflow: hidden;
+  box-shadow: var(--shadow-md);
+  animation: fade-slide-up var(--base) var(--ease) both;
 }
 
 .scan-page .upload-panel-head {
@@ -132,56 +315,43 @@
   background: #000;
 }
 
+.scan-page .upload-panel-body {
+  padding: var(--sp-3);
+}
+
 .scan-page .close-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   border: none;
-  background: rgba(10, 12, 18, 0.75);
+  background: rgba(15, 18, 30, 0.55);
   color: #fff;
-  font-size: 18px;
-  line-height: 1;
   cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background var(--fast) ease;
 }
 
-.scan-page .upload-result,
+.scan-page .close-btn:hover { background: rgba(15, 18, 30, 0.75); }
+
 .scan-page .state {
-  padding: 12px 14px;
-  font-size: 14px;
-}
-
-.scan-page .state { color: #9aa3b2; margin: 0; }
-.scan-page .state.error { color: #ff6b6b; }
-
-.scan-page .codes {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
-}
-
-.scan-page .code-chip {
-  background: #16321f;
-  color: #25d366;
-  border: 1px solid #25d366;
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.scan-page .fields-list .field-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 0;
+  color: var(--text-muted);
+  margin: 4px 0;
   font-size: 14px;
-  border-bottom: 1px solid #242938;
+  padding: var(--sp-2);
 }
 
-.scan-page .fields-list .field-row:last-child { border-bottom: none; }
-.scan-page .fields-list .k { color: #7fb0ff; font-weight: 500; }
-.scan-page .fields-list .v { color: #e8e8e8; text-align: right; word-break: break-word; }
+.scan-page .state.error { color: var(--danger-strong); }
+
+.spinner.brand {
+  border-color: var(--brand-100);
+  border-left-color: var(--brand-500);
+}

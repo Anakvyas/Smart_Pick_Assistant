@@ -1,0 +1,446 @@
+.watch-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 20, 0.6);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  z-index: 100;
+}
+
+.watch-dialog {
+  width: min(100%, 440px);
+  max-height: min(92svh, 780px);
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.watch-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  background: linear-gradient(155deg, var(--brand-700) 0%, var(--brand-900) 100%);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.watch-dialog-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.watch-dialog-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.watch-dialog-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.watch-dialog-sub {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+}
+
+.watch-dialog-header-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.watch-dialog-scanner-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background var(--fast) ease;
+}
+
+.watch-dialog-scanner-btn:hover { background: rgba(255, 255, 255, 0.24); }
+
+.watch-dialog-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--fast) ease;
+}
+
+.watch-dialog-close:hover { background: rgba(255, 255, 255, 0.24); }
+
+.watch-dialog-body {
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.qr-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: var(--sp-4);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.qr-panel .qr-code img {
+  background: #fff;
+  padding: 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  display: block;
+}
+
+.qr-panel .qr-code-placeholder {
+  border-radius: var(--r-md);
+  background: var(--neutral-bg);
+}
+
+.qr-panel .qr-code-label {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.qr-hint {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 300px;
+}
+
+.qr-warning {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--warning-strong);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  line-height: 1.5;
+}
+
+.watch-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  margin-top: 6px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: background var(--fast) ease, border-color var(--fast) ease;
+}
+
+.watch-upload-btn:hover {
+  background: var(--surface-alt);
+  border-color: var(--brand-500);
+}
+
+.watch-upload-review {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: var(--sp-3);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  animation: fade-slide-up var(--base) var(--ease) both;
+}
+
+.watch-upload-review-img {
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  object-fit: contain;
+}
+
+.watch-upload-review-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.watch-upload-review-actions .btn { flex: 1; }
+
+.watch-upload-error {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--warning-strong);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  line-height: 1.5;
+}
+
+.watch-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.watch-debug-section {
+  margin-top: var(--sp-2);
+}
+
+.watch-debug-section .section-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.section-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 var(--sp-2);
+}
+
+.watch-live-pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.watch-live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.watch-live-pulse.active {
+  color: var(--success-strong);
+}
+
+.watch-live-pulse.active .watch-live-pulse-dot {
+  background: var(--success);
+  animation: watch-live-ping 1.1s ease-in-out infinite;
+}
+
+@keyframes watch-live-ping {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(15, 157, 99, 0.45); }
+  50% { box-shadow: 0 0 0 4px rgba(15, 157, 99, 0); }
+}
+
+/* The actual photo the phone's camera is pointed at right now — lets
+   whoever's at this PC see exactly what's being scanned without looking
+   at the phone. A thin ring around the frame pulses while frames are
+   actively arriving (frameLive), settling to a plain border once the
+   phone stops sending — a quiet "is this still live?" signal at a glance. */
+.watch-frame-preview {
+  margin-bottom: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 2px solid var(--border);
+  overflow: hidden;
+  background: #0b0d12;
+  transition: border-color var(--fast) ease;
+  line-height: 0;
+}
+
+.watch-frame-preview.active {
+  border-color: var(--success);
+  animation: watch-frame-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes watch-frame-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(15, 157, 99, 0.25); }
+  50% { box-shadow: 0 0 0 5px rgba(15, 157, 99, 0); }
+}
+
+.watch-frame-preview img {
+  display: block;
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+}
+
+.watch-items-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: var(--sp-3);
+}
+
+.watch-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  transition: border-color var(--fast) ease, background var(--fast) ease;
+}
+
+.watch-item.done {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+}
+
+.watch-item.unavailable {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+}
+
+.watch-item.unavailable .watch-item-check {
+  background: var(--warning);
+  border-color: var(--warning);
+}
+
+.watch-item.unavailable .watch-item-name { color: var(--warning-strong); }
+
+.watch-item-unavailable-reason {
+  font-weight: 500;
+  color: var(--warning-strong);
+  opacity: 0.85;
+}
+
+.watch-item-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: background var(--fast) ease, border-color var(--fast) ease;
+}
+
+.watch-item.done .watch-item-check {
+  background: var(--success);
+  border-color: var(--success);
+  /* Plays once, the moment `done` is added to the item (a class change is
+     a fresh `animation` value, so it always restarts from 0% here rather
+     than needing JS to detect "just verified" vs "loaded already done") —
+     the little "tick" moment for the live auto-scan flow: each item pops
+     as it's checked off, one by one, with zero page refresh involved. */
+  animation: watch-tick-pop 420ms var(--ease) both;
+}
+
+@keyframes watch-tick-pop {
+  0% { transform: scale(0.5); }
+  60% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.watch-item.done {
+  animation: watch-item-flash 900ms var(--ease) both;
+}
+
+@keyframes watch-item-flash {
+  0% { background: var(--success-bg); box-shadow: 0 0 0 3px var(--success-border); }
+  100% { background: var(--success-bg); box-shadow: 0 0 0 0 transparent; }
+}
+
+.watch-item-name {
+  flex: 1;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.watch-item.done .watch-item-name { color: var(--success-strong); }
+
+.watch-item-qty {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.watch-dialog-error,
+.watch-dialog-complete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: var(--sp-8) var(--sp-5) var(--sp-6);
+  animation: fade-slide-up var(--base) var(--ease) both;
+}
+
+.watch-dialog-error { color: var(--danger-strong); }
+.watch-dialog-error p { margin: 0 0 8px; font-size: 13.5px; color: var(--text-muted); }
+
+.watch-complete-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--success-bg);
+  color: var(--success-strong);
+  box-shadow: 0 0 0 8px var(--success-bg);
+  margin-bottom: 4px;
+}
+
+.watch-dialog-complete h2 { font-size: 20px; font-weight: 800; color: var(--success-strong); }
+.watch-dialog-complete p { margin: 0 0 10px; font-size: 13.5px; color: var(--text-muted); }
+.watch-dialog-complete .btn { width: 100%; }
+
+.spinner.brand {
+  border-color: var(--brand-100);
+  border-left-color: var(--brand-500);
+}

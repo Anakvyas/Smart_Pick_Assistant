@@ -1,0 +1,230 @@
+.details-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 20, 0.6);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  z-index: 100;
+}
+
+.details-dialog {
+  width: min(100%, 440px);
+  max-height: min(92svh, 780px);
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.details-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  background: linear-gradient(155deg, var(--success-strong) 0%, var(--brand-900) 100%);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.details-dialog-title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.details-dialog-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.details-dialog-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.details-dialog-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.details-dialog-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--fast) ease;
+}
+
+.details-dialog-close:hover { background: rgba(255, 255, 255, 0.24); }
+
+.details-dialog-body {
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.details-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.details-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--sp-3);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  min-width: 0;
+}
+
+.details-stat-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+}
+
+.details-stat-value {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.details-summary-line {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.details-items-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: var(--sp-3);
+}
+
+.details-error {
+  color: var(--danger-strong);
+  font-size: 13.5px;
+}
+
+.details-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.details-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 13px;
+}
+
+.details-item.done {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+}
+
+.details-item.unavailable {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+}
+
+.details-item-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.details-item.done .details-item-check {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.details-item.unavailable .details-item-check {
+  background: var(--warning);
+  border-color: var(--warning);
+}
+
+.details-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.details-item-name {
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.details-item.done .details-item-name { color: var(--success-strong); }
+
+.details-item-unavailable-reason {
+  font-weight: 500;
+  color: var(--warning-strong);
+  opacity: 0.85;
+}
+
+.details-item-timestamp {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.details-item-qty {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}

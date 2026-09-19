@@ -1,0 +1,368 @@
+/* Admin order builder — search/drag products into a cart, tune per-order
+   label verification, and create the order; paired with a live list of
+   every order in the system. Reuses the dashboard's tokens/panel/status-
+   pill styling (index.css / global.css) rather than a separate palette.
+*/
+
+.admin-shell {
+  position: relative;
+  min-height: 100vh;
+  background: var(--bg-wash);
+  padding: var(--sp-5) var(--sp-4) 48px;
+  overflow: hidden;
+}
+
+.admin-header {
+  max-width: 1120px;
+}
+
+.admin-content {
+  position: relative;
+  z-index: 1;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .admin-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); }
+  .orders-panel { position: sticky; top: var(--sp-5); max-height: calc(100vh - var(--sp-10)); overflow-y: auto; }
+}
+
+/* ------------------------------------------------------- search + list */
+.search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: 0 12px;
+  min-height: 44px;
+  margin: 14px 0 12px;
+  color: var(--text-faint);
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+
+.search-wrap:focus-within { border-color: var(--brand-500); box-shadow: var(--shadow-focus); color: var(--brand-500); }
+
+.search-wrap input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.92rem;
+  min-height: 42px;
+}
+
+.search-wrap input:focus { outline: none; }
+.search-wrap input::placeholder { color: var(--text-faint); }
+
+.product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  padding-right: 2px;
+}
+
+.product-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-alt);
+  cursor: grab;
+  transition: border-color var(--fast) ease, box-shadow var(--fast) ease;
+}
+
+.product-row:hover { border-color: var(--brand-400); box-shadow: var(--shadow-xs); }
+.product-row:active { cursor: grabbing; }
+
+.product-thumb {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.product-thumb-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: var(--brand-700);
+  background: var(--brand-100);
+}
+
+.product-row-text { flex: 1; min-width: 0; }
+
+.product-row-name {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-row-meta {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.add-chip {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--brand-100);
+  color: var(--brand-700);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background var(--fast) ease, color var(--fast) ease, transform var(--fast) ease;
+}
+
+.add-chip:hover { background: var(--brand-500); color: #fff; }
+.add-chip:active { transform: scale(0.92); }
+
+.custom-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.custom-item-row input {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  border: 1.5px dashed var(--border-strong);
+  background: transparent;
+  border-radius: var(--r-sm);
+  padding: 0 10px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.custom-item-row input:focus { outline: none; border-color: var(--brand-500); }
+.custom-item-row input::placeholder { color: var(--text-faint); }
+
+/* ------------------------------------------------------------ cart --- */
+.cart-dropzone {
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 12px;
+  min-height: 96px;
+  margin-bottom: 16px;
+  transition: border-color var(--fast) ease, background var(--fast) ease;
+}
+
+.cart-dropzone.is-dragover {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+}
+
+.cart-dropzone-label {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.cart-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+}
+
+.cart-line + .cart-line { border-top: 1px solid var(--border); }
+
+.cart-line-text { flex: 1; min-width: 0; }
+
+.cart-line-name {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cart-line-meta {
+  margin: 2px 0 0;
+  font-size: 0.74rem;
+  color: var(--text-faint);
+}
+
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.qty-stepper button {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.qty-stepper button:hover { border-color: var(--brand-500); color: var(--brand-600); }
+
+.qty-stepper span {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.cart-line-remove {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cart-line-remove:hover { color: var(--danger); }
+
+/* -------------------------------------------------- strict toggle --- */
+.strict-toggle { margin-bottom: 16px; }
+
+.strict-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.info-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--neutral-bg);
+  color: var(--text-faint);
+  font-size: 0.66rem;
+  font-weight: 800;
+  font-style: normal;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
+.strict-toggle-options {
+  display: flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.strict-toggle-options button {
+  flex: 1;
+  border: none;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 8px 4px;
+  border-right: 1px solid var(--border-strong);
+  transition: background var(--fast) ease, color var(--fast) ease;
+}
+
+.strict-toggle-options button:last-child { border-right: none; }
+.strict-toggle-options button:hover { background: var(--brand-50); }
+.strict-toggle-options button.is-active { background: var(--brand-500); color: #fff; }
+
+.create-success {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--success-strong);
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  animation: fade-slide-up var(--base) ease both;
+}
+
+.admin-create-button { width: 100%; }
+
+/* -------------------------------------------------- orders panel --- */
+.admin-order-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-order-row {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  background: var(--surface-alt);
+}
+
+.admin-order-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.admin-order-number {
+  font-weight: 800;
+  font-size: 0.88rem;
+  font-family: var(--font-display);
+}
+
+.admin-order-row-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+
+.admin-order-row .order-progress-track { height: 5px; }
+
+@media (min-width: 700px) {
+  .admin-shell { padding-top: 32px; }
+}

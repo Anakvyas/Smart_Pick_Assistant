@@ -1,0 +1,811 @@
+.scan-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 20, 0.6);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  z-index: 100;
+}
+
+.scan-dialog {
+  width: min(100%, 420px);
+  max-height: min(92svh, 820px);
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.scan-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  background: linear-gradient(155deg, var(--brand-700) 0%, var(--brand-900) 100%);
+  color: #fff;
+}
+
+.scan-dialog-target {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.scan-dialog-target-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.scan-dialog-target-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-dialog-target-sub {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+}
+
+.scan-dialog-header-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scan-dialog-qr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background var(--fast) ease;
+}
+
+.scan-dialog-qr-btn:hover { background: rgba(255, 255, 255, 0.24); }
+
+.scan-dialog-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--fast) ease;
+}
+
+.scan-dialog-close:hover { background: rgba(255, 255, 255, 0.24); }
+
+.scan-dialog-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  /* .scan-dialog clips at a fixed max-height for its rounded corners — on
+     a real phone's shorter viewport this body (video stage + live result +
+     raw JSON) is routinely taller than that, so it needs its own scroll or
+     the ancestor's overflow:hidden silently clips content with no way to
+     reach it, not just visually truncates it. */
+  overflow-y: auto;
+}
+
+.scan-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: #0b0d12;
+  line-height: 0;
+  overflow: hidden;
+}
+
+.scan-stage video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.scan-dialog .viewfinder {
+  position: absolute;
+  inset: 14% 12%;
+  pointer-events: none;
+  animation: fade-in var(--slow) ease both;
+}
+
+.scan-dialog .vf-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+}
+
+.scan-dialog .vf-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: var(--r-md); }
+.scan-dialog .vf-corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: var(--r-md); }
+.scan-dialog .vf-corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: var(--r-md); }
+.scan-dialog .vf-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: var(--r-md); }
+
+.scan-hint {
+  position: absolute;
+  top: var(--sp-3);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 28px);
+  padding: 8px 16px;
+  background: rgba(30, 22, 4, 0.85);
+  border: 1px solid rgba(217, 143, 10, 0.55);
+  color: #ffd88a;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: fade-slide-up var(--base) var(--ease) both;
+  backdrop-filter: blur(6px);
+}
+
+/* Same slot/shape as .scan-hint, but blue-neutral — this is quiet feedback
+   for a scan that never left the device (already picked, or not on this
+   order), not a camera-quality coaching tip. Stays on the live camera the
+   whole time so nothing swaps screens for a duplicate/irrelevant scan. */
+.quick-note {
+  position: absolute;
+  top: var(--sp-3);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 28px);
+  padding: 8px 16px;
+  background: rgba(10, 16, 38, 0.85);
+  border: 1px solid rgba(84, 112, 214, 0.55);
+  color: #c7d3fb;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: fade-slide-up var(--base) var(--ease) both;
+  backdrop-filter: blur(6px);
+}
+
+/* Green, same small pill treatment as .scan-hint/.quick-note above — sits
+   on the live video, never covers it. See ScanDialog.jsx for why this is
+   deliberately NOT a full verifying-overlay. */
+.camera-starting-badge {
+  position: absolute;
+  top: var(--sp-3);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: calc(100% - 28px);
+  padding: 8px 16px;
+  background: rgba(6, 30, 18, 0.85);
+  border: 1px solid rgba(15, 157, 99, 0.55);
+  color: #b7f3d4;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  animation: fade-slide-up var(--base) var(--ease) both;
+  backdrop-filter: blur(6px);
+}
+
+.camera-starting-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+  animation: camera-starting-ping 1.1s ease-in-out infinite;
+}
+
+@keyframes camera-starting-ping {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(15, 157, 99, 0.45); }
+  50% { box-shadow: 0 0 0 4px rgba(15, 157, 99, 0); }
+}
+
+.scan-dialog .no-product-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 6, 6, 0.4);
+  pointer-events: none;
+  padding: var(--sp-4);
+}
+
+.scan-dialog .no-product-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(40, 12, 12, 0.9);
+  border: 1.5px solid rgba(224, 54, 46, 0.55);
+  color: #ff8f89;
+  padding: 18px 26px;
+  border-radius: var(--r-xl);
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+  backdrop-filter: blur(6px);
+  animation: fade-in var(--base) ease both;
+}
+
+.scan-dialog .no-product-sub {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffb3ae;
+  letter-spacing: normal;
+}
+
+.verifying-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(9, 12, 10, 0.45);
+}
+
+.verifying-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(11, 43, 27, 0.92);
+  border: 1.5px solid rgba(15, 157, 99, 0.55);
+  color: #b7f3d4;
+  padding: 12px 20px;
+  border-radius: var(--r-pill);
+  font-size: 14px;
+  font-weight: 800;
+  backdrop-filter: blur(6px);
+  animation: fade-in var(--fast) ease both;
+}
+
+.camera-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 6, 0.7);
+  padding: var(--sp-5);
+}
+
+.camera-error-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  color: #ffb3ae;
+  max-width: 280px;
+}
+
+.camera-error-card p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #ffd7d4;
+}
+
+/* Capture review — fully covers the live video (not a banner over it, like
+   the mismatch/no-product overlays): reviewing a still photo reads better
+   as a clean takeover than a translucent layer on top of a moving feed. */
+.capture-review-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+}
+
+.capture-review-img {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  object-fit: contain;
+  background: #000;
+}
+
+.capture-review-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+  padding: var(--sp-3);
+  background: rgba(10, 12, 20, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.capture-review-actions .btn { flex: 1; }
+
+.scan-dialog-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--sp-3) var(--sp-4);
+}
+
+.scan-dialog .live-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--neutral-bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background var(--fast) ease, color var(--fast) ease, border-color var(--fast) ease;
+}
+
+.scan-dialog .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
+.scan-dialog .live-pill.on { background: var(--success-bg); color: var(--success-strong); border-color: var(--success-border); }
+.scan-dialog .live-pill.on .live-dot { background: var(--success); box-shadow: 0 0 0 3px rgba(15, 157, 99, 0.18); }
+
+/* ------------------------------------------------------ outcome screens */
+.scan-outcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--sp-8) var(--sp-5) var(--sp-6);
+  gap: 6px;
+  animation: fade-slide-up var(--base) var(--ease) both;
+  flex: 1;
+  min-height: 0;
+  /* Same fix as .scan-dialog-body: the "Verified"/"Not Verified" screens
+     stack an icon, heading, full ResultPanel and action buttons — on a
+     short phone viewport that's easily taller than the dialog's fixed
+     max-height, and without its own scroll the action button (the whole
+     point of this screen) can end up clipped below the fold. */
+  overflow-y: auto;
+}
+
+.outcome-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  animation: outcome-pop var(--slow) var(--ease) both;
+}
+
+.outcome-icon.success { background: var(--success-bg); color: var(--success-strong); box-shadow: 0 0 0 8px var(--success-bg); }
+.outcome-icon.danger { background: var(--danger-bg); color: var(--danger-strong); box-shadow: 0 0 0 8px var(--danger-bg); }
+
+@keyframes outcome-pop {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.scan-outcome h2 {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.scan-outcome.verified h2 { color: var(--success-strong); }
+.scan-outcome.not-verified h2 { color: var(--danger-strong); }
+
+.outcome-sub {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* ScanDialog embeds the shared ResultPanel (same component /scan and
+   /display use) for the actual field breakdown + raw-JSON toggle, rather
+   than a second bespoke "card" — stretch it to full width against the
+   otherwise center-aligned outcome screen, and give it consistent
+   top/bottom spacing in that context. */
+.scan-outcome .result-panel {
+  width: 100%;
+  align-self: stretch;
+  text-align: left;
+  margin: var(--sp-2) 0 var(--sp-4);
+}
+
+.scan-outcome .result-panel-empty { margin: var(--sp-2) 0 var(--sp-4); }
+
+.expected-vs-detected {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.evd-col {
+  min-width: 0;
+  min-height: 64px;
+  box-sizing: border-box;
+
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center;
+  align-items: flex-start;
+
+  padding: 9px 12px;
+
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+
+  text-align: left;
+}
+
+/* Label */
+.evd-label {
+  position: static !important;
+  display: block !important;
+  float: none !important;
+
+  width: 100% !important;
+  height: auto !important;
+
+  margin: 0 0 5px !important;
+  padding: 0 !important;
+
+  font-size: 10px;
+  line-height: 1.2 !important;
+  font-weight: 800;
+
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+
+  color: var(--text-faint);
+
+  white-space: normal;
+}
+
+/* Value */
+.evd-value {
+  position: static !important;
+  display: block !important;
+  float: none !important;
+
+  width: 100% !important;
+  height: auto !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  line-height: 1.3 !important;
+  font-weight: 700;
+
+  word-break: break-word;
+  overflow-wrap: anywhere;
+
+  white-space: normal;
+}
+
+/* ≠ */
+.evd-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  align-self: center;
+
+  min-width: 20px;
+
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .expected-vs-detected {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .evd-col {
+    min-height: 66px;
+    padding: 8px 9px;
+  }
+
+  .evd-label {
+    font-size: 9px;
+    margin-bottom: 4px !important;
+  }
+
+  .evd-value {
+    font-size: 12px;
+    line-height: 1.25 !important;
+  }
+
+  .evd-arrow {
+    min-width: 16px;
+    font-size: 17px;
+  }
+}
+
+/* -------------------------------------- non-blocking mismatch banner --- */
+/* Anchored to the bottom of the live camera stage, not a takeover screen —
+   the video keeps playing behind/above it the whole time. */
+.mismatch-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* .scan-stage clips overlays to the video frame's bounds — this banner's
+     content (reason text + expected/detected row + buttons) can be taller
+     than that on a narrow phone screen, so it gets its own scroll and a
+     cap short of the full stage height rather than risk the action
+     buttons being clipped off with no way to reach them. */
+  max-height: 85%;
+  overflow-y: auto;
+  padding: var(--sp-3);
+  /* Nearly opaque (was 0.88) — this sits directly over a live, often
+     brightly-lit camera feed, and the old background let enough of it
+     bleed through to wash out the text on a bright product/label. */
+  background: rgba(10, 6, 6, 0.96);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(224, 84, 74, 0.4);
+  animation: fade-slide-up var(--base) var(--ease) both;
+}
+
+.mismatch-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #ffb3ae;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.mismatch-banner .expected-vs-detected.compact {
+  margin: 0 0 8px;
+  gap: 6px;
+}
+
+.mismatch-banner .evd-col {
+  padding: 7px 9px;
+  /* More visible backing (was 0.06/0.14) so "Expected"/"Detected" read as
+     distinct solid cards instead of a near-invisible outline over the
+     camera feed. */
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.mismatch-banner .evd-label { color: rgba(255, 255, 255, 0.7); }
+.mismatch-banner .evd-value { color: #fff; font-size: 12.5px; font-weight: 800; }
+
+.mismatch-reason {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.mismatch-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mismatch-actions .btn { flex: 1; }
+
+.btn-sm {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+}
+
+/* ------------------------------------------------- inline upload + OCR --- */
+.scan-dialog-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.upload-inline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  border-radius: var(--r-pill);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background var(--fast) ease, border-color var(--fast) ease, color var(--fast) ease;
+}
+
+.upload-inline-btn:hover:not(:disabled) { background: var(--brand-50); border-color: var(--brand-400); color: var(--brand-700); }
+.upload-inline-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.upload-inline-btn .spinner { width: 13px; height: 13px; border-color: var(--border-strong); border-left-color: var(--text-muted); }
+
+.upload-inline-error {
+  margin: 0 var(--sp-4) var(--sp-2);
+  font-size: 12.5px;
+}
+
+/* --------------------------------------------------- mark unavailable --- */
+.mark-unavailable-link {
+  display: block;
+  width: calc(100% - var(--sp-8));
+  margin: 0 var(--sp-4) var(--sp-3);
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 4px;
+  transition: color var(--fast) ease;
+}
+
+.mark-unavailable-link:hover { color: var(--warning-strong); }
+
+.unavailable-confirm {
+  margin: 0 var(--sp-4) var(--sp-4);
+  padding: var(--sp-4);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--r-lg);
+  animation: fade-slide-up var(--base) var(--ease) both;
+}
+
+.unavailable-confirm-title {
+  margin: 0 0 3px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.unavailable-confirm-sub {
+  margin: 0 0 var(--sp-3);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.unavailable-reason-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: var(--sp-3);
+}
+
+.unavailable-reason-btn {
+  background: var(--surface);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-strong);
+  border-radius: var(--r-md);
+  padding: 10px 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: background var(--fast) ease, transform var(--fast) ease;
+}
+
+.unavailable-reason-btn:hover { background: var(--warning-bg); }
+.unavailable-reason-btn:active { transform: scale(0.97); }
+
+.unavailable-cancel-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px;
+}
+
+.unavailable-cancel-btn:hover { color: var(--text); }
+
+/* Plain-language status in place of the old raw-fields/JSON panels — a
+   phone screen mid-scan needs "what's happening", not a technical field
+   dump (that detail still lives on the PC's debug panel, see
+   OrderWatchDialog). Tone mirrors the mismatch banner/quick-note palette
+   already used elsewhere on this screen, just inline instead of an
+   overlay, so it reads as calm ambient status rather than an alert. */
+.live-status-message {
+  margin: 0 var(--sp-4) var(--sp-4);
+  padding: 10px var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  transition: background var(--fast) ease, border-color var(--fast) ease, color var(--fast) ease;
+}
+
+.live-status-message.pending {
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--warning-strong);
+}
+
+.live-status-message.success {
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-strong);
+}
+
+.outcome-tips {
+  width: 100%;
+  text-align: left;
+  margin: 4px 0 var(--sp-4);
+  padding-left: 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.outcome-error {
+  color: var(--danger-strong);
+  font-size: 13px;
+  margin: 0 0 var(--sp-2);
+}
+
+.outcome-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.outcome-actions .btn { flex: 1; }
+
+.spinner.brand {
+  border-color: var(--brand-100);
+  border-left-color: var(--brand-500);
+}
+
+@media (min-width: 520px) {
+  .scan-dialog-backdrop { padding: var(--sp-6); }
+}
