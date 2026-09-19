@@ -9,6 +9,7 @@ class OrderItemPublic(BaseModel):
     id: uuid.UUID
     name: str
     barcode: Optional[str] = None
+    gstin: Optional[str] = None
     quantity_expected: int
     quantity_verified: int
     status: str

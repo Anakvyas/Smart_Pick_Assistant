@@ -214,7 +214,7 @@ export default function OrderWatchDialog({ order, onClose, onOrderUpdated, onSho
           })
           return null
         }
-        return ordersApi.verify(order.id, { barcode: r.barcode || null, name: r.name || null })
+        return ordersApi.verify(order.id, { barcode: r.barcode || null, gstin: r.gstin || null, name: r.name || null })
       })
       .then((res) => {
         if (!res) return

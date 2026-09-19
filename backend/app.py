@@ -31,6 +31,7 @@ from fastapi.staticfiles import StaticFiles
 from config import DEMO_DIR
 from core.config import get_settings
 from exceptions.handlers import register_exception_handlers
+from routes.admin import router as admin_router
 from routes.auth import router as auth_router
 from routes.demo import router as demo_router
 from routes.orders import router as orders_router
@@ -69,6 +70,7 @@ register_exception_handlers(app)
 
 app.include_router(auth_router)
 app.include_router(orders_router)
+app.include_router(admin_router)
 app.include_router(scan_router)
 app.include_router(demo_router)
 

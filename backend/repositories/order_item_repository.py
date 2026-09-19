@@ -9,10 +9,12 @@ class OrderItemRepository:
         self.db = db
 
     def list_for_order(self, order_id):
+        # position is the real line order (see models/order_item.py);
+        # created_at is only a tiebreaker for rows that somehow share one.
         stmt = (
             select(OrderItem)
             .where(OrderItem.order_id == order_id)
-            .order_by(OrderItem.created_at.asc())
+            .order_by(OrderItem.position.asc(), OrderItem.created_at.asc())
         )
         return self.db.execute(stmt).scalars().all()
 

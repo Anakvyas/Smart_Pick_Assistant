@@ -16,6 +16,12 @@ class OrderRepository:
         )
         return self.db.execute(stmt).scalars().all()
 
+    def list_all(self):
+        # Unscoped by picker — the admin order list shows every order in the
+        # system, not just the current login's own (see admin_controller.py).
+        stmt = select(Order).order_by(Order.assigned_at.desc())
+        return self.db.execute(stmt).scalars().all()
+
     def get_for_picker(self, order_id, picker_id):
         stmt = select(Order).where(Order.id == order_id, Order.picker_id == picker_id)
         return self.db.execute(stmt).scalars().one_or_none()

@@ -54,7 +54,10 @@ def _ago(minutes):
 
 def _line(product_id, qty=1, verified=0, verified_minutes_ago=None):
     p = _CATALOG[product_id]
-    line = dict(name=p["name"], barcode=p["barcode"], quantity_expected=qty, quantity_verified=verified)
+    line = dict(
+        name=p["name"], barcode=p["barcode"], gstin=p.get("gstin"),
+        quantity_expected=qty, quantity_verified=verified,
+    )
     # Only meaningful once verified >= qty (see seed_orders, which is what
     # actually decides VERIFIED vs PENDING) — a picked-but-not-yet-complete
     # line has no single "verified at" moment.
@@ -147,12 +150,13 @@ def seed_orders(db, picker: User) -> None:
         db.add(order)
         db.flush()  # assigns order.id's FK target before OrderItem rows reference it
 
-        for item_spec in spec["items"]:
+        for position, item_spec in enumerate(spec["items"]):
             verified = item_spec["quantity_verified"]
             expected = item_spec["quantity_expected"]
             db.add(OrderItem(
                 id=uuid.uuid4(),
                 order_id=order.id,
+                position=position,
                 status="VERIFIED" if verified >= expected else "PENDING",
                 **item_spec,
             ))
