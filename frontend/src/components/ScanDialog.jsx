@@ -322,6 +322,12 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
   useEffect(() => {
     let stream = null
     let cancelled = false
+    // Captured once, up front — not re-read as `videoRef.current` later
+    // (including in cleanup), since the <video> element conditionally
+    // unmounts/remounts across stage changes (showsCamera(stage)). Reading
+    // the ref fresh at cleanup time could grab a *different*, newer
+    // element than the one this effect actually attached a stream to.
+    const videoEl = videoRef.current
 
     async function start() {
       setCameraError(null)
@@ -365,9 +371,9 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
           audio: false,
         })
         if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return }
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          await videoRef.current.play()
+        if (videoEl) {
+          videoEl.srcObject = stream
+          await videoEl.play()
         }
         // Best-effort: some Android Chrome cameras default to single-shot
         // focus, which combined with a scanner's constant macro-range
@@ -400,7 +406,7 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
     // the whole page. This turns silent hangs into the same recoverable
     // error state a thrown getUserMedia error already gets.
     const watchdog = setTimeout(() => {
-      if (!cancelled && !videoRef.current?.videoWidth) {
+      if (!cancelled && !videoEl?.videoWidth) {
         setCameraError("Camera didn't start. Tap Try again — if that doesn't help, check that no other app or tab is using the camera.")
       }
     }, 8000)
@@ -409,6 +415,15 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
       cancelled = true
       clearTimeout(watchdog)
       stream?.getTracks().forEach((t) => t.stop())
+      // Fully detach, not just stop the tracks — leaving a stopped
+      // stream's object reference on the <video> element is what some
+      // mobile browsers have been seen to get confused by on a same-page
+      // retry (the "Try again" button bumping cameraKey), where a fresh
+      // getUserMedia call resolves fine but the element itself never
+      // actually starts playing the new stream. Only a full page reload
+      // reliably cleared that stale reference before; this should make
+      // "Try again" just as reliable.
+      if (videoEl) videoEl.srcObject = null
     }
   }, [cameraKey])
 
@@ -683,6 +698,25 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
                   <div className="verifying-badge">
                     <span className="spinner brand" aria-hidden="true" />
                     Loading order…
+                  </div>
+                </div>
+              )}
+
+              {/* Without this, the gap between "camera permission granted"
+                  and "the first live frame actually round-tripped through
+                  the server" showed nothing at all — just whatever the raw
+                  <video> happened to display (often a blank/black box on a
+                  slow phone or a slow first connection). That read as
+                  "broken," and a page refresh was the only recovery a
+                  picker could think to try — even though the camera/socket
+                  were often still fine and just needed a few more seconds.
+                  This turns that silent gap into an explicit, reassuring
+                  state instead of nothing. */}
+              {stage === 'starting' && !cameraError && (
+                <div className="verifying-overlay">
+                  <div className="verifying-badge">
+                    <span className="spinner brand" aria-hidden="true" />
+                    Starting camera…
                   </div>
                 </div>
               )}
