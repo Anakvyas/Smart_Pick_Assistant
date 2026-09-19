@@ -4,7 +4,6 @@ import { ordersApi } from '../api/ordersApi'
 import { analyzePhoto } from '../api/scanApi'
 import { isTrustworthyRead, mergeFrame, normalizeName } from '../lib/scanAggregation'
 import { countResolved, firstPending, isPending } from '../lib/orderItems'
-import ResultPanel from './ResultPanel'
 import './ScanDialog.css'
 
 // How long a valid, in-frame read has to hold steady before we trust it and
@@ -30,28 +29,44 @@ function nameMatches(item, rawName) {
   return !!b && (a.includes(b) || b.includes(a))
 }
 
-// Mirrors the backend's own matching order (controllers/order_controller.py,
-// _find_match) exactly, including the part that's easy to miss: a barcode
-// match alone is never trusted by itself — a misread, a swapped/adjacent
-// label, or a relabeled item can all still produce a "correct" barcode read
-// on the wrong physical product. The same scan's name has to corroborate
-// that *same* item before it counts as a match; a bare barcode with no name
-// (or a name pointing somewhere else) is treated as no match at all, not
-// silently trusted on the barcode. Only when no barcode was read does a
-// name-only match count on its own. `pendingOnly` narrows the pool to items
-// not yet resolved (VERIFIED or UNAVAILABLE both excluded).
-function findMatchForScan(items, scan, pendingOnly) {
-  const pool = pendingOnly ? items.filter(isPending) : items
-  if (scan.barcode) {
-    const barcodeHit = pool.find((i) => i.barcode && i.barcode === scan.barcode)
-    if (barcodeHit) {
-      return scan.name && nameMatches(barcodeHit, scan.name) ? barcodeHit : null
-    }
+// A barcode-scanner read (scan.barcode) and the label's OCR-read GSTIN
+// (scan.gstin) aren't the same kind of number, but either one landing on
+// either of the item's own barcode or gstin is equally good evidence of
+// which physical product this is (mirrors the backend's _code_matches).
+function codeMatches(item, scan) {
+  const scanned = [scan.barcode, scan.gstin].filter(Boolean)
+  const expected = [item.barcode, item.gstin].filter(Boolean)
+  return scanned.some((c) => expected.includes(c))
+}
+
+// Looser than itemVerifies below — no label corroboration required — used
+// only to recognize *which* product a scan looks like, for a clearer "out
+// of order" message. Mirrors the backend's _identifies: a code match is
+// enough on its own, otherwise falls back to name — not an early return on
+// "a code was read", since a scanned code that isn't this item's own (e.g.
+// a name-only custom item) shouldn't block recognizing it by label.
+function identifies(item, scan) {
+  if ((scan.barcode || scan.gstin) && codeMatches(item, scan)) return true
+  return !!(scan.name && nameMatches(item, scan.name))
+}
+
+// Mirrors the backend's own matching (controllers/order_controller.py,
+// _find_match) exactly, including the part that's easy to miss: a code
+// (barcode or GSTIN) match alone is never trusted by itself when the order
+// is in strict mode — a misread, a swapped/adjacent label, or a relabeled
+// item can all still produce a "correct" code read on the wrong physical
+// product. The same scan's name has to corroborate it before it counts as
+// a match. `strictLabel` (the order's effective strict_label_verification)
+// skips that corroboration and trusts the code alone, same as the backend
+// does for a "barcode only" order. When the scan's code doesn't match this
+// item's own (e.g. it has none on file at all — a name-only custom item),
+// falls back to a plain name check rather than giving up just because some
+// code was read.
+function itemVerifies(item, scan, strictLabel) {
+  if ((scan.barcode || scan.gstin) && codeMatches(item, scan)) {
+    return !strictLabel || !!(scan.name && nameMatches(item, scan.name))
   }
-  if (scan.name) {
-    return pool.find((i) => nameMatches(i, scan.name)) || null
-  }
-  return null
+  return !!(scan.name && nameMatches(item, scan.name))
 }
 
 // Plain-language status for what's been read so far this hold, in place of
@@ -104,14 +119,12 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
   const [cameraError, setCameraError] = useState(null)
   const [cameraKey, setCameraKey] = useState(0)
   // loading | load_error | starting | scanning | checking |
-  // verified_item | order_complete | not_verified
+  // order_complete | not_verified
   const [stage, setStage] = useState('loading')
   const [notVerifiedReason, setNotVerifiedReason] = useState(null)
   const [hint, setHint] = useState(null)
   const [noProduct, setNoProduct] = useState(false)
   const [items, setItems] = useState([])
-  const [lastMatch, setLastMatch] = useState(null) // the OrderItem the last successful scan matched
-  const [detected, setDetected] = useState(null) // merged result shown on the verified_item screen
   const [upload, setUpload] = useState({ status: 'idle', error: null })
   // A photo taken (or picked from the gallery) but not yet sent — shown as
   // a review step (the captured frame, Analyze / Retake) instead of firing
@@ -224,33 +237,47 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
   const verifyScanned = useCallback((scanned) => {
     if (!scanned) return
 
-    const pendingMatch = findMatchForScan(itemsRef.current, scanned, true)
-    if (!pendingMatch) {
-      const anyMatch = findMatchForScan(itemsRef.current, scanned, false)
-      if (anyMatch) {
+    // null (order default) behaves as strict — matches config.py's own
+    // STRICT_LABEL_VERIFICATION default — since this client has no way to
+    // read the backend's actual env-level default when the order itself
+    // doesn't override it.
+    const strictLabel = order.strict_label_verification ?? true
+    // Line-wise: only the current expected item (whatever "Scan this next"
+    // up top names) is ever eligible — a clean read of a *later* line
+    // doesn't jump the queue. Mirrors the backend's _current_expected_item
+    // / _find_match exactly, so this client-side pre-check never disagrees
+    // with what the actual verify call would decide.
+    const current = firstPending(itemsRef.current)
+    const currentMatch = current && itemVerifies(current, scanned, strictLabel) ? current : null
+    if (!currentMatch) {
+      const verifiedHit = itemsRef.current.find((i) => !isPending(i) && identifies(i, scanned))
+      if (verifiedHit) {
         // Already fully picked — the camera is very often still pointed at
         // whatever was *just* verified. Quiet, non-blocking: stays on the
         // live camera, no screen swap, nothing to acknowledge.
-        showQuickNote(`${anyMatch.name} — already picked ✓`)
+        showQuickNote(`${verifiedHit.name} — already picked ✓`)
         return
       }
-      // A confident read (barcode, or a corroborated name) that matches
-      // nothing on this order at all — a genuine wrong item, not noise.
+      const otherPending = current
+        && itemsRef.current.find((i) => isPending(i) && i.id !== current.id && identifies(i, scanned))
       // Non-blocking: shown as a banner over the still-live camera, not a
       // takeover screen, so scanning keeps running the whole time and the
       // picker can retry, keep scanning, or fall back to a photo upload.
-      // A barcode with no name yet is the specific "not enough to confirm"
-      // case findMatchForScan rejects (see its own comment) — called out
-      // by name here rather than lumped in with a genuine wrong-item read.
-      const reason = scanned.barcode && !scanned.name
-        ? "Barcode read, but there's no label/name yet to confirm it — hold steady so the label gets read too."
-        : null
+      const reason = otherPending
+        ? `Scan "${current.name}" next — that's what this order expects right now, not "${otherPending.name}".`
+        // A code (barcode/GSTIN) with no name yet is the specific "not
+        // enough to confirm" case itemVerifies rejects in strict mode —
+        // called out by name here rather than lumped in with a genuine
+        // wrong-item read.
+        : strictLabel && (scanned.barcode || scanned.gstin) && !scanned.name && current
+          ? `Barcode/GSTIN read, but there's no label/name yet to confirm it's "${current.name}" — hold steady so the label gets read too.`
+          : null
       setMismatch({ detected: scanned, reason })
       return
     }
 
     goTo('checking')
-    ordersApi.verify(order.id, { barcode: scanned.barcode || null, name: scanned.name || null }, scanToken)
+    ordersApi.verify(order.id, { barcode: scanned.barcode || null, gstin: scanned.gstin || null, name: scanned.name || null }, scanToken)
       .then((res) => {
         const data = res.data
         onOrderUpdated?.(data.order)
@@ -263,15 +290,29 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
           return
         }
         setItems((prev) => prev.map((i) => (i.id === data.item.id ? data.item : i)))
-        setLastMatch(data.item)
-        setDetected(scanned)
         setMismatch(null)
-        goTo(data.order.status === 'COMPLETED' ? 'order_complete' : 'verified_item')
+        if (data.order.status === 'COMPLETED') {
+          goTo('order_complete')
+          return
+        }
+        // Stay live rather than parking on a static "Verified" screen that
+        // needs a tap to continue — a quiet, self-dismissing note (same
+        // mechanism as the "already picked" case above) plus an immediate
+        // reset back into 'scanning' so the very next product can be
+        // scanned right away. pump() bails out whenever stage isn't one of
+        // stillScanning's, so without this the frame loop would otherwise
+        // just sit dead until something called rescan().
+        showQuickNote(`${data.item.name} verified ✓ (${data.item.quantity_verified}/${data.item.quantity_expected})`)
+        mergeRef.current = null
+        if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null }
+        setLiveResult(null)
+        goTo('scanning')
+        pumpRef.current()
       })
       .catch((err) => {
         goTo('not_verified', { reason: err?.payload?.error?.message || "Couldn't reach the server to verify that scan." })
       })
-  }, [order.id, scanToken, onOrderUpdated, goTo, showQuickNote])
+  }, [order.id, order.strict_label_verification, scanToken, onOrderUpdated, goTo, showQuickNote])
 
   const verifyCurrent = useCallback(() => {
     const scanned = mergeRef.current
@@ -504,7 +545,6 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
     mergeRef.current = null
     setHint(null)
     setNoProduct(false)
-    setDetected(null)
     setMismatch(null)
     setLiveResult(null)
     setCapturedPhoto((prev) => {
@@ -946,29 +986,6 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
             {upload.status === 'error' && (
               <p className="outcome-error upload-inline-error">Couldn't analyze that photo: {upload.error}</p>
             )}
-          </div>
-        )}
-
-        {stage === 'verified_item' && (
-          <div className="scan-outcome verified">
-            <div className="outcome-icon success">
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 12l5 5L20 6" />
-              </svg>
-            </div>
-            <h2>Verified</h2>
-            <p className="outcome-sub">
-              Matched {lastMatch?.name} against Order {order.order_number}
-              {lastMatch && ` · ${lastMatch.quantity_verified} of ${lastMatch.quantity_expected} confirmed`}
-            </p>
-
-            <ResultPanel result={detected} />
-
-            <div className="outcome-actions">
-              <button type="button" className="btn btn-primary" onClick={rescan}>
-                Move to next product
-              </button>
-            </div>
           </div>
         )}
 

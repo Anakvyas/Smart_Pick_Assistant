@@ -5,6 +5,7 @@ import Demo from './pages/Demo'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import DashboardPage from './pages/DashboardPage'
+import AdminPage from './pages/AdminPage'
 import OrderScanPage from './pages/OrderScanPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -39,6 +40,16 @@ function AppRoutes() {
         element={
           <ProtectedRoute isAuthenticated={isAuthenticated} isLoading={isLoading}>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* No separate ADMIN role yet — same login as the picker dashboard,
+          just a different view (see routes/admin.py on the backend). */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated} isLoading={isLoading}>
+            <AdminPage />
           </ProtectedRoute>
         }
       />

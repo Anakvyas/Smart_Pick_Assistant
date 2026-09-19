@@ -339,6 +339,22 @@
 
 .logout-button:hover { color: var(--danger-strong); border-color: var(--danger-border); background: var(--danger-bg); }
 
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.admin-nav-link {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--brand-600);
+  text-decoration: none;
+  padding: 0 6px;
+}
+
+.admin-nav-link:hover { color: var(--brand-700); text-decoration: underline; }
+
 .dashboard-content {
   position: relative;
   z-index: 1;
