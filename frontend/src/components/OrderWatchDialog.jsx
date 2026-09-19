@@ -53,6 +53,16 @@ export default function OrderWatchDialog({ order, onClose, onOrderUpdated, onSho
   // broadcast()) so two pickers working two different orders never see
   // each other's live scan traffic here.
   const [lastScanFrame, setLastScanFrame] = useState(null)
+  // The actual JPEG the phone's camera just captured, as a data URL — same
+  // field Display.jsx already renders (`result.image`, base64), just not
+  // previously shown here. Lets someone at this PC see exactly what the
+  // phone is pointed at without looking at the phone itself.
+  const [frameImage, setFrameImage] = useState(null)
+  // True for a short window after each frame — drives the "scanning live…"
+  // pulse so it's obvious the phone is actively feeding frames right now,
+  // not just that a frame arrived at some point in the past.
+  const [frameLive, setFrameLive] = useState(false)
+  const frameLiveTimerRef = useRef(null)
   const fileInputRef = useRef(null)
   // A photo picked from this PC's filesystem/gallery, held for review
   // before it's sent — same pattern as ScanDialog's capture/gallery review
@@ -141,7 +151,21 @@ export default function OrderWatchDialog({ order, onClose, onOrderUpdated, onSho
       return
     }
     setLastScanFrame(msg)
+    // Only replace the preview when this frame actually carries one — the
+    // backend only includes `image` when a display is connected (see
+    // routes/scan.py's want_image), which is always true once this dialog
+    // is open, but a mid-stream error frame (frame_error_payload) never
+    // has one and shouldn't blank out the last real photo.
+    if (msg.image) setFrameImage(`data:image/jpeg;base64,${msg.image}`)
+    setFrameLive(true)
+    clearTimeout(frameLiveTimerRef.current)
+    // Frames arrive roughly every few hundred ms while a phone is actively
+    // scanning (see ScanDialog's single-in-flight pump loop) — anything
+    // quieter than ~1.5s means the phone stopped, not just a slow frame.
+    frameLiveTimerRef.current = setTimeout(() => setFrameLive(false), 1500)
   }, [onOrderUpdated])
+
+  useEffect(() => () => clearTimeout(frameLiveTimerRef.current), [])
 
   useSocket(`/ws/display/${order.id}`, onSocketMessage)
 
@@ -392,11 +416,24 @@ export default function OrderWatchDialog({ order, onClose, onOrderUpdated, onSho
             </div>
 
             {/* Debug view: whatever the phone's camera is reading right
-                now, live — so what went wrong (or right) on a scan can be
+                now, live — the actual photo it's processing, the extracted
+                fields and raw JSON, and a pulse while frames are actively
+                arriving — so what went wrong (or right) on a scan can be
                 checked from this screen without needing to look at the
                 phone at all. */}
             <div className="watch-debug-section">
-              <div className="section-label">Live scan feed (debug)</div>
+              <div className="section-label-row">
+                <div className="section-label">Live scan feed (debug)</div>
+                <span className={`watch-live-pulse${frameLive ? ' active' : ''}`}>
+                  <span className="watch-live-pulse-dot" />
+                  {frameLive ? 'Scanning…' : 'Idle'}
+                </span>
+              </div>
+              {frameImage && (
+                <div className={`watch-frame-preview${frameLive ? ' active' : ''}`}>
+                  <img src={frameImage} alt="What the phone's camera is currently pointed at" />
+                </div>
+              )}
               <ResultPanel
                 result={lastScanFrame}
                 placeholder="Nothing scanned yet — this fills in as soon as a phone starts scanning."
