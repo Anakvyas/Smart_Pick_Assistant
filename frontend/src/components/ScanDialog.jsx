@@ -68,7 +68,12 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
   const videoRef = useRef(null)
   const overlayRef = useRef(null)
   const captureCanvasRef = useRef(document.createElement('canvas'))
+  // "Gallery" — the phone's photo library/files, no `capture` attribute
+  // (see that input's own comment for why one matters).
   const fileInputRef = useRef(null)
+  // "Capture" — forces the native camera app open via `capture`, for a
+  // full-resolution dedicated photo instead of a low-res live-preview grab.
+  const cameraInputRef = useRef(null)
   const boxesRef = useRef([])
   const lastResultAtRef = useRef(0)
   const inflightRef = useRef(false)
@@ -477,7 +482,7 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
   // Releases a captured/picked photo's blob URL if the dialog closes while
   // it's still under review — every other path that replaces or clears
   // capturedPhoto already revokes the outgoing URL itself (see
-  // capturePhoto/onFilePicked/retakePhoto), this only covers unmount.
+  // onFilePicked/retakePhoto), this only covers unmount.
   const capturedPhotoRef = useRef(null)
   useEffect(() => { capturedPhotoRef.current = capturedPhoto }, [capturedPhoto])
   useEffect(() => () => {
@@ -539,44 +544,14 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
     setCameraKey((k) => k + 1)
   }, [rescan])
 
-  // Freezes whatever the camera currently sees into a review step — a
-  // fallback path for when live scanning isn't landing a clean read
-  // (glare, awkward angle) — instead of firing straight off to the server.
-  // The picker sees exactly what was captured and can Retake before it's
-  // sent, rather than finding out it was a bad shot only after the round
-  // trip. See analyzeCaptured for what actually happens on confirm.
-  const capturePhoto = useCallback(() => {
-    const video = videoRef.current
-    if (!video || !video.videoWidth) {
-      setUpload({ status: 'error', error: 'Camera not ready yet — give it a moment and try again.' })
-      return
-    }
-    // Draws a frame straight from the live video, independent of whatever
-    // pump()'s background scanning loop last left on this shared canvas —
-    // that loop can be mid-cycle, paused, or a beat stale at the exact
-    // moment the shutter's tapped, which was leaving this capture with
-    // whatever (or nothing) happened to already be there instead of what
-    // the camera shows right now.
-    const w = video.videoWidth
-    const h = video.videoHeight
-    const canvas = captureCanvasRef.current
-    canvas.width = w
-    canvas.height = h
-    canvas.getContext('2d').drawImage(video, 0, 0, w, h)
-
-    canvas.toBlob((blob) => {
-      if (!blob) { setUpload({ status: 'error', error: 'could not capture the frame' }); return }
-      setCapturedPhoto((prev) => {
-        if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl)
-        return { blob, previewUrl: URL.createObjectURL(blob) }
-      })
-      setUpload({ status: 'idle', error: null })
-    }, 'image/jpeg', 0.9)
-  }, [])
-
-  // A gallery pick goes through the exact same review step as a live
-  // capture — same preview, same Analyze/Retake choice — rather than
-  // uploading the instant a file is chosen.
+  // Both "Capture" (native camera app, forced via the hidden input's
+  // `capture` attribute) and "Gallery" (photo library/files, no `capture`
+  // attribute) land here — same review step either way: a preview with
+  // Retake/Analyze, not sent until confirmed. A native camera photo reads
+  // meaningfully better than an in-page canvas grab off the live preview
+  // stream ever could (full sensor resolution, real autofocus/HDR, vs. the
+  // getUserMedia stream's capped ~1280x720 live feed) — worth the one extra
+  // tap out to the camera app and back.
   const onFilePicked = useCallback((e) => {
     const file = e.target.files?.[0]
     e.target.value = '' // allow picking the same file again later
@@ -600,10 +575,14 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
   // is then checked against the order exactly like a live scan would be
   // (see verifyScanned), so this isn't just a preview — a match here
   // verifies the item and updates the checklist same as scanning it live.
+  // Passing order.id also gets this broadcast to /ws/display/{order.id} —
+  // same channel the live camera pump already feeds — so a Capture or
+  // Gallery photo shows up in the PC watch screen's live debug feed too,
+  // not just live camera frames.
   const analyzeCaptured = useCallback(() => {
     if (!capturedPhoto) return
     setUpload({ status: 'loading', error: null })
-    analyzePhoto(capturedPhoto.blob)
+    analyzePhoto(capturedPhoto.blob, 'pick.jpg', order.id)
       .then((r) => {
         setLastRawFrame(r)
         if (r.valid && isTrustworthyRead(r)) {
@@ -617,7 +596,7 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
         }
       })
       .catch((err) => setUpload({ status: 'error', error: err.message }))
-  }, [capturedPhoto, verifyScanned, showQuickNote, retakePhoto])
+  }, [capturedPhoto, order.id, verifyScanned, showQuickNote, retakePhoto])
 
   const isLive = status === 'open'
   const statusText = status !== 'open'
@@ -782,8 +761,8 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
                   {mismatch.reason && <p className="mismatch-reason">{mismatch.reason}</p>}
                   <div className="mismatch-actions">
                     <button type="button" className="btn btn-secondary btn-sm" onClick={rescan}>Rescan</button>
-                    <button type="button" className="btn btn-primary btn-sm" onClick={capturePhoto}>
-                      Capture photo
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => cameraInputRef.current?.click()}>
+                      Take photo
                     </button>
                   </div>
                 </div>
@@ -823,7 +802,7 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
                   <button
                     type="button"
                     className="upload-inline-btn"
-                    onClick={capturePhoto}
+                    onClick={() => cameraInputRef.current?.click()}
                     disabled={stage === 'checking'}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -847,16 +826,29 @@ export default function ScanDialog({ order, onClose, onOrderUpdated, scanToken, 
             </div>
 
             <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              // `capture` forces the native camera app open directly — a
+              // full-resolution, properly-focused photo instead of a
+              // canvas-grabbed frame off the live preview stream (capped at
+              // ~1280x720, no real autofocus control).
+              capture="environment"
+              onChange={onFilePicked}
+              hidden
+            />
+
+            <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              // Deliberately no `capture` attribute — the "Capture" button
-              // above already takes a fresh photo straight from the live
-              // video. On many mobile browsers (iOS Safari especially),
-              // `capture` on the file input skips the native
+              // Deliberately no `capture` attribute — this is the photo
+              // library/files picker, not the camera (see cameraInputRef
+              // above for that). On many mobile browsers (iOS Safari
+              // especially), `capture` on a file input skips the native
               // camera/photo-library/files chooser and launches the camera
-              // app directly, which silently defeats this "Gallery" button
-              // (there's no way to actually pick an existing photo).
+              // app directly, which would silently defeat this "Gallery"
+              // button (no way to actually pick an existing photo).
               onChange={onFilePicked}
               hidden
             />

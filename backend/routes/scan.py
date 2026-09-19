@@ -9,7 +9,7 @@ from __future__ import annotations  # for `str | None` below, on Python 3.9
 
 from collections import defaultdict
 
-from fastapi import APIRouter, File, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, File, Form, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
 from controllers import scan_controller
@@ -45,8 +45,21 @@ def health():
 
 
 @router.post("/api/analyze")
-async def analyze(file: UploadFile = File(...)):
-    return await scan_controller.analyze_photo(file)
+async def analyze(file: UploadFile = File(...), order_id: str | None = Form(None)):
+    # want_image=True only when this photo is tied to an order — that's
+    # the only case anything (the order's /ws/display/{order_id}) will
+    # ever look at it, so a caller with no order context (the global
+    # /scan page, /demo) skips the encode entirely.
+    status_code, result = await scan_controller.analyze_photo(file, want_image=bool(order_id))
+    if order_id:
+        # Same channel the live camera pump already feeds (see _scan_loop
+        # below) — a Capture/Gallery photo now shows up in that order's
+        # live "what's the phone looking at" feed too, not just continuous
+        # live frames. Broadcast the full result (image included); the
+        # HTTP response below strips it same as always.
+        await broadcast(result, order_id)
+    response = {k: v for k, v in result.items() if k != "image"}
+    return JSONResponse(response, status_code=status_code)
 
 
 async def _display_loop(ws: WebSocket, order_id: str | None):
