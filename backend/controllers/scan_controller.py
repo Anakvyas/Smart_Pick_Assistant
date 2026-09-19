@@ -10,31 +10,36 @@ import asyncio
 
 import cv2
 from fastapi import UploadFile
-from fastapi.responses import JSONResponse
 
 from services import ocr_service
 from services.analyzer import analyze_image
 from utils import encode_preview, frame_signature, signatures_close
 
 
-async def analyze_photo(file: UploadFile) -> JSONResponse:
+async def analyze_photo(file: UploadFile, want_image: bool = False) -> tuple[int, dict]:
     """One-shot barcode/label analysis for a single uploaded photo. Kept as
     a plain request/response JSON API — separate from the /ws/scan live
     stream — so it's easy to call from anywhere (curl, another service, a
     future mobile app) without speaking the scan protocol.
+
+    Returns (status_code, result) rather than a Response — routes/scan.py
+    both builds the HTTP response (image stripped) *and*, when this photo
+    is tied to an order, broadcasts the full result (image included) to
+    that order's live display channel; a plain dict lets it do both
+    without re-deriving anything or this module reaching into routes/scan.py
+    (which would be a circular import — that module already imports this
+    one). want_image defaults to False so a caller with no PC watching
+    (the global /scan page, /demo) doesn't pay for an encode nobody sees.
     """
     data = await file.read()
     loop = asyncio.get_running_loop()
     try:
-        result = await loop.run_in_executor(None, analyze_image, data)
+        result = await loop.run_in_executor(None, analyze_image, data, want_image)
+        return 200, result
     except Exception as e:
-        return JSONResponse(
-            {"valid": False, "message": f"analysis failed: {e}",
-             "codes": [], "barcode": None, "barcode_type": None,
-             **ocr_service.label_payload(None), "hint": None, "hint_kind": None},
-            status_code=500)
-    result.pop("image", None)   # never needed by the upload page itself
-    return JSONResponse(result)
+        return 500, {"valid": False, "message": f"analysis failed: {e}",
+                      "codes": [], "barcode": None, "barcode_type": None,
+                      **ocr_service.label_payload(None), "hint": None, "hint_kind": None}
 
 
 async def process_frame(jpg: bytes, img, want_image: bool, last_sig, last_result):

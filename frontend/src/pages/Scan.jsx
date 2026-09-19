@@ -131,6 +131,9 @@ export default function Scan() {
   useEffect(() => {
     let stream = null
     let cancelled = false
+    // Captured once, up front — see ScanDialog.jsx's identical comment for
+    // why cleanup shouldn't re-read videoRef.current fresh.
+    const videoEl = videoRef.current
 
     async function start() {
       setCameraError(null)
@@ -156,9 +159,9 @@ export default function Scan() {
           audio: false,
         })
         if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return }
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          await videoRef.current.play()
+        if (videoEl) {
+          videoEl.srcObject = stream
+          await videoEl.play()
         }
         // Best-effort continuous-autofocus hint — see ScanDialog.jsx's
         // identical block for why; silently ignored wherever unsupported
@@ -186,7 +189,7 @@ export default function Scan() {
     // no way to recover short of reloading the whole page. See
     // ScanDialog.jsx's identical watchdog.
     const watchdog = setTimeout(() => {
-      if (!cancelled && !videoRef.current?.videoWidth) {
+      if (!cancelled && !videoEl?.videoWidth) {
         setCameraError("Camera didn't start. Tap Try again — if that doesn't help, check that no other app or tab is using the camera.")
       }
     }, 8000)
@@ -195,6 +198,10 @@ export default function Scan() {
       cancelled = true
       clearTimeout(watchdog)
       stream?.getTracks().forEach((t) => t.stop())
+      // Fully detach, not just stop the tracks — see ScanDialog.jsx's
+      // identical cleanup for why a stale srcObject reference can make a
+      // same-page "Try again" retry less reliable than a full reload.
+      if (videoEl) videoEl.srcObject = null
     }
   }, [cameraKey])
 
